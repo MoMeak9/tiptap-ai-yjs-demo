@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tiptap 3 Collaboration Demo - Yjs</title>
+  <link rel="stylesheet" href="/src/styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🎨 Tiptap 3 协作编辑器</h1>
+      <div class="user-info">
+        <label>
+          用户名: 
+          <input type="text" id="username" placeholder="输入你的名字" />
+        </label>
+        <button id="change-color">更换颜色</button>
+        <div class="status">
+          <span id="connection-status" class="status-disconnected">未连接</span>
+          <span id="user-count">在线用户: 0</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="editor-wrapper">
+      <!-- 工具栏 -->
+      <div class="toolbar" id="toolbar">
+        <div class="toolbar-group">
+          <button data-action="bold" title="加粗 (Ctrl+B)">
+            <strong>B</strong>
+          </button>
+          <button data-action="italic" title="斜体 (Ctrl+I)">
+            <em>I</em>
+          </button>
+          <button data-action="strike" title="删除线">
+            <s>S</s>
+          </button>
+          <button data-action="code" title="行内代码">
+            <code>&lt;/&gt;</code>
+          </button>
+        </div>
+
+        <div class="toolbar-group">
+          <button data-action="heading" data-level="1" title="标题 1">H1</button>
+          <button data-action="heading" data-level="2" title="标题 2">H2</button>
+          <button data-action="heading" data-level="3" title="标题 3">H3</button>
+          <button data-action="paragraph" title="段落">P</button>
+        </div>
+
+        <div class="toolbar-group">
+          <button data-action="bulletList" title="无序列表">
+            • 列表
+          </button>
+          <button data-action="orderedList" title="有序列表">
+            1. 列表
+          </button>
+          <button data-action="blockquote" title="引用">
+            ❝ 引用
+          </button>
+          <button data-action="codeBlock" title="代码块">
+            { } 代码
+          </button>
+        </div>
+
+        <div class="toolbar-group">
+          <button data-action="highlight" title="高亮">
+            🖍 高亮
+          </button>
+          <button data-action="link" title="插入链接">
+            🔗 链接
+          </button>
+          <button data-action="image" title="插入图片">
+            🖼 图片
+          </button>
+        </div>
+
+        <div class="toolbar-group">
+          <button data-action="undo" title="撤销 (Ctrl+Z)">↶</button>
+          <button data-action="redo" title="重做 (Ctrl+Shift+Z)">↷</button>
+        </div>
+
+        <div class="toolbar-group">
+          <button data-action="clear" title="清除格式">
+            🗑 清除
+          </button>
+        </div>
+      </div>
+
+      <!-- 编辑器 -->
+      <div class="editor" id="editor"></div>
+
+      <!-- 在线用户列表 -->
+      <div class="users-list" id="users-list">
+        <h3>在线用户</h3>
+        <div id="users-container"></div>
+      </div>
+
+      <!-- 字数统计 -->
+      <div class="character-count" id="character-count">
+        字符数: 0 / 单词数: 0
+      </div>
+    </div>
+
+    <footer>
+      <p>
+        💡 提示: 在多个浏览器标签页中打开此页面测试协作功能
+        <br>
+        📡 WebSocket 服务器: <code>ws://localhost:1234</code>
+      </p>
+    </footer>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+{
+    "name": "tiptap-ai-yjs-demo",
+    "version": "1.0.0",
+    "description": "Tiptap 3 Collaboration Demo with Yjs (Framework-agnostic)",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "server": "node server.js"
+    },
+    "keywords": [
+        "tiptap",
+        "collaboration",
+        "yjs",
+        "collaborative-editing"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "@tiptap/core": "^3.2.0",
+        "@tiptap/extension-collaboration": "^3.2.0",
+        "@tiptap/extension-collaboration-caret": "^3.2.0",
+        "@tiptap/starter-kit": "^3.2.0",
+        "@tiptap/extension-color": "^3.2.0",
+        "@tiptap/extension-text-style": "^3.2.0",
+        "@tiptap/extension-highlight": "^3.2.0",
+        "@tiptap/extension-link": "^3.2.0",
+        "@tiptap/extension-image": "^3.2.0",
+        "@tiptap/extension-placeholder": "^3.2.0",
+        "@tiptap/extension-character-count": "^3.2.0",
+        "y-websocket": "^2.0.4",
+        "yjs": "^13.6.20"
+    },
+    "devDependencies": {
+        "vite": "^5.4.11",
+        "ws": "^8.18.0",
+        "lib0": "^0.2.98"
+    }
+}
