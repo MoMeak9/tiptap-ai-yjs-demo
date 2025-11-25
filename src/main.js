@@ -11,6 +11,9 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
+import { Comment } from "./extensions/comment.js";
+import { CommentManager } from "./extensions/commentManager.js";
+import { CommentUI } from "./extensions/commentUI.js";
 
 // 生成随机颜色
 const getRandomColor = () => {
@@ -77,6 +80,9 @@ const provider = new WebsocketProvider(
 // 设置awareness状态
 provider.awareness.setLocalStateField("user", currentUser);
 
+// 创建评论管理器
+const commentManager = new CommentManager(ydoc, provider);
+
 // 创建编辑器
 const editor = new Editor({
   element: document.querySelector("#editor"),
@@ -112,6 +118,14 @@ const editor = new Editor({
     CharacterCount,
     TextStyle,
     Color,
+    Comment.configure({
+      HTMLAttributes: {
+        class: "tiptap-comment",
+      },
+      onCommentActivated: (commentId) => {
+        commentManager.setActiveComment(commentId);
+      },
+    }),
   ],
   content: "",
   onUpdate: ({ editor }) => {
@@ -131,6 +145,7 @@ const editor = new Editor({
           <li>👥 在线用户光标追踪</li>
           <li>🔗 链接、图片等多媒体支持</li>
           <li>📝 字符和单词统计</li>
+          <li>💬 协同评论功能</li>
         </ul>
 
         <h2>如何测试协作?</h2>
@@ -138,6 +153,7 @@ const editor = new Editor({
           <li>在多个浏览器标签页中打开此页面</li>
           <li>在任意标签页中输入内容</li>
           <li>观察其他标签页实时同步更新</li>
+          <li>选中文本后点击评论按钮添加评论</li>
         </ol>
 
         <blockquote>
@@ -150,6 +166,9 @@ const editor = new Editor({
     updateCharacterCount(editor);
   },
 });
+
+// 初始化评论UI
+const commentUI = new CommentUI(editor, commentManager);
 
 // 更新字符统计
 function updateCharacterCount(editor) {
@@ -219,6 +238,9 @@ document.getElementById("toolbar").addEventListener("click", (e) => {
       break;
     case "clear":
       editor.chain().focus().clearNodes().unsetAllMarks().run();
+      break;
+    case "comment":
+      commentUI.addCommentFromSelection();
       break;
   }
 
@@ -339,6 +361,8 @@ updateToolbarState();
 
 // 清理资源
 window.addEventListener("beforeunload", () => {
+  commentManager.destroy();
+  commentUI.destroy();
   provider.destroy();
   editor.destroy();
 });

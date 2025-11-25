@@ -1,16 +1,27 @@
-# Tiptap 3 协作编辑器 Demo
+# Tiptap 3 协作编辑器 Demo (含评论功能)
 
-这是一个基于 **Tiptap 3** 和 **Yjs** 的实时协作编辑器演示项目，使用 vanilla JavaScript 实现（框架无关）。
+这是一个基于 **Tiptap 3** 和 **Yjs** 的实时协作编辑器演示项目，使用 vanilla JavaScript 实现（框架无关）。新增了类似 Google Docs 的协同评论功能！
 
 ## ✨ 功能特性
 
 - 🤝 **实时协作编辑** - 多人同时编辑同一文档
+- 💬 **协同评论功能** - 类似 Google Docs 的评论系统，支持多人协同
 - 🎨 **富文本编辑** - 支持标题、列表、引用、代码块等格式
 - 👥 **在线用户追踪** - 显示其他用户的光标位置和选择区域
 - 🔗 **多媒体支持** - 插入链接、图片等
 - 📊 **字符统计** - 实时显示字符数和单词数
 - 🎯 **用户自定义** - 自定义用户名和光标颜色
 - 💾 **本地存储** - 保存用户偏好设置
+
+## 🆕 评论功能亮点
+
+- ✅ 选中文本添加评论,实时同步到所有用户
+- ✅ 支持评论回复,构建完整的讨论线程
+- ✅ 点击评论快速定位到对应文本
+- ✅ 评论数据通过 Yjs 协同,多人同时评论无冲突
+- ✅ 优雅的评论面板 UI,可折叠/展开
+- ✅ 快捷键支持 (Ctrl+Shift+M)
+- ✅ 显示评论时间和作者信息
 
 ## 🛠️ 技术栈
 
@@ -76,6 +87,7 @@ npm run build
 - **Placeholder** - 占位符提示
 - **CharacterCount** - 字符统计
 - **TextStyle & Color** - 文本样式和颜色
+- **Comment** - 协同评论功能 (自定义扩展)
 
 ## 📖 项目结构
 
@@ -84,11 +96,17 @@ tiptap-ai-yjs-demo/
 ├── index.html          # 主 HTML 文件
 ├── src/
 │   ├── main.js        # 主 JavaScript 文件
-│   └── styles.css     # 样式文件
+│   ├── styles.css     # 样式文件
+│   └── extensions/    # 自定义扩展
+│       ├── comment.js          # 评论 Mark 扩展
+│       ├── commentManager.js   # 评论数据管理
+│       └── commentUI.js        # 评论 UI 组件
 ├── server.js          # WebSocket 服务器
 ├── vite.config.js     # Vite 配置
 ├── package.json       # 项目依赖
-└── README.md          # 项目文档
+├── README.md          # 项目文档
+├── COMMENT_GUIDE.md   # 评论功能详细文档
+└── COMMENT_USAGE.md   # 评论功能使用示例
 ```
 
 ## 🔧 自定义配置
@@ -148,18 +166,59 @@ const provider = new WebsocketProvider(
 
 记得更新前端代码中的 WebSocket 服务器地址为实际部署的地址。
 
-## 📝 注意事项
+## � 评论功能使用指南
+
+### 添加评论
+
+1. 在编辑器中选中要评论的文本
+2. 点击工具栏的 "💬 评论" 按钮，或按 `Ctrl+Shift+M` (Mac: `Cmd+Shift+M`)
+3. 在右侧评论面板中输入评论内容
+
+### 编辑和回复评论
+
+- 点击评论项可激活编辑
+- 在评论底部输入框中可添加回复
+- 所有操作实时同步到其他用户
+
+### 更多功能
+
+- 📍 点击定位按钮跳转到评论对应的文本
+- 🗑️ 点击删除按钮移除评论
+- 折叠/展开评论面板
+
+详细使用方法请查看 [评论功能使用指南](./COMMENT_USAGE.md) 和 [评论功能技术文档](./COMMENT_GUIDE.md)。
+
+## �📝 注意事项
 
 1. **生产环境** - 当前 WebSocket 服务器是简单实现，生产环境建议使用更健壮的方案如 [Hocuspocus](https://tiptap.dev/docs/hocuspocus)
 2. **数据持久化** - 当前数据仅存储在内存中，服务器重启后数据会丢失。可以集成数据库存储
 3. **认证授权** - 生产环境需要添加用户认证和权限控制
 4. **扩展性** - 对于大规模部署，考虑使用 Redis 等进行跨服务器同步
+5. **评论持久化** - 评论数据也需要持久化存储，可以监听 Yjs 的 update 事件保存到数据库
+
+## 🎯 实现细节
+
+### 评论功能架构
+
+本项目参考了 [tiptap-comment-extension](https://github.com/sereneinserenade/tiptap-comment-extension) 的设计,并完全集成了 Yjs 协同编辑能力:
+
+1. **Comment Extension** - 基于 Tiptap Mark 实现评论标记
+2. **CommentManager** - 使用 Yjs Map 存储评论数据,实现多人协同
+3. **CommentUI** - 评论界面组件,提供友好的交互体验
+
+### Yjs 集成关键点
+
+- 评论数据存储在 `ydoc.getMap('comments')` 中
+- 通过 Yjs 的 CRDT 算法自动处理冲突
+- WebSocket Provider 确保实时同步
+- 支持离线编辑和冲突合并
 
 ## 🔗 相关资源
 
 - [Tiptap 文档](https://tiptap.dev/docs)
 - [Yjs 文档](https://docs.yjs.dev/)
 - [Tiptap Collaboration 指南](https://tiptap.dev/docs/collaboration/getting-started/install)
+- [tiptap-comment-extension](https://github.com/sereneinserenade/tiptap-comment-extension) - 评论功能参考实现
 
 ## 📄 License
 
@@ -167,4 +226,4 @@ MIT
 
 ---
 
-**享受协作编辑的乐趣！** 🎉
+**享受协作编辑和评论的乐趣！** 🎉💬
