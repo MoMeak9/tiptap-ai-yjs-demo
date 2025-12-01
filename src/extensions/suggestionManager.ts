@@ -8,8 +8,8 @@ import type {
 } from "../types";
 
 /**
- * SuggestionManager - Local state manager for AI suggestions
- * Manages suggestion data without Yjs synchronization (local preview only)
+ * SuggestionManager - AI 建议的本地状态管理器
+ * 管理建议数据，不使用 Yjs 同步（仅本地预览）
  */
 export class SuggestionManager implements ISuggestionManager {
   private editor: Editor;
@@ -29,18 +29,18 @@ export class SuggestionManager implements ISuggestionManager {
   }
 
   /**
-   * Attach editor event listeners
+   * 附加 editor 事件监听器
    */
   private _attachEditorListeners(): void {
-    // Listen for document changes that might invalidate suggestions
+    // 监听可能使建议失效的文档更改
     this.editor.on("update", ({ transaction }) => {
-      // Skip if this is a suggestion operation
+      // 如果这是一个 suggestion 操作则跳过
       if (transaction.getMeta("suggestion")) {
         this._syncFromDocument();
         return;
       }
 
-      // External edit detected - check if it affects our suggestions
+      // 检测到外部编辑 - 检查是否影响我们的建议
       if (transaction.docChanged && this.hasPendingSuggestions()) {
         this._handleExternalEdit();
       }
@@ -48,18 +48,18 @@ export class SuggestionManager implements ISuggestionManager {
   }
 
   /**
-   * Handle external edits that might affect suggestions
+   * 处理可能影响建议的外部编辑
    */
   private _handleExternalEdit(): void {
-    // For MVP: simply invalidate all suggestions on external edit
-    // More sophisticated conflict resolution can be added later
+    // 对于 MVP：在外部编辑时简单地使所有建议失效
+    // 更复杂的冲突解决可以稍后添加
     const hadSuggestions = this.hasPendingSuggestions();
 
     if (hadSuggestions) {
-      // Sync from document to get current state
+      // 从文档同步以获取当前状态
       this._syncFromDocument();
 
-      // If suggestions were affected, notify
+      // 如果建议受到影响，则通知
       if (this.onChangeCallback) {
         this.onChangeCallback(this.getAllSuggestions());
       }
@@ -67,7 +67,7 @@ export class SuggestionManager implements ISuggestionManager {
   }
 
   /**
-   * Sync suggestion state from the actual document
+   * 从实际文档同步建议状态
    */
   private _syncFromDocument(): void {
     const suggestions = new Map<string, SuggestionItem>();
@@ -96,7 +96,7 @@ export class SuggestionManager implements ISuggestionManager {
       return true;
     });
 
-    // Update groups
+    // 更新组
     this.groups.clear();
     groupIds.forEach((groupId) => {
       const groupSuggestions = Array.from(suggestions.values()).filter(
@@ -113,21 +113,21 @@ export class SuggestionManager implements ISuggestionManager {
       }
     });
 
-    // Update current group if it no longer exists
+    // 如果当前组不再存在则更新
     if (this.currentGroupId && !this.groups.has(this.currentGroupId)) {
       const firstGroup = this.groups.keys().next().value;
       this.currentGroupId = firstGroup || null;
       this.currentIndex = 0;
     }
 
-    // Notify listeners
+    // 通知监听器
     if (this.onChangeCallback) {
       this.onChangeCallback(this.getAllSuggestions());
     }
   }
 
   /**
-   * Register a new suggestion group after applying AI suggestion
+   * 在应用 AI 建议后注册新的建议组
    */
   registerGroup(groupId: string): void {
     this.currentGroupId = groupId;
@@ -136,7 +136,7 @@ export class SuggestionManager implements ISuggestionManager {
   }
 
   /**
-   * Get all suggestions
+   * 获取所有建议
    */
   getAllSuggestions(): SuggestionItem[] {
     const all: SuggestionItem[] = [];
@@ -147,7 +147,7 @@ export class SuggestionManager implements ISuggestionManager {
   }
 
   /**
-   * Get suggestions for current group
+   * 获取当前组的建议
    */
   getCurrentGroupSuggestions(): SuggestionItem[] {
     if (!this.currentGroupId) return [];
@@ -156,23 +156,23 @@ export class SuggestionManager implements ISuggestionManager {
   }
 
   /**
-   * Get current suggestion being reviewed
+   * 获取当前正在审阅的建议
    */
   getCurrentSuggestion(): SuggestionItem | null {
     const suggestions = this.getCurrentGroupSuggestions();
     if (suggestions.length === 0) return null;
 
-    // Filter only pending suggestions
+    // 仅筛选待处理的建议
     const pending = suggestions.filter((s) => s.status === "pending");
     if (pending.length === 0) return null;
 
-    // Clamp index to valid range
+    // 将索引限制在有效范围内
     const index = Math.min(this.currentIndex, pending.length - 1);
     return pending[index] || null;
   }
 
   /**
-   * Get progress info
+   * 获取进度信息
    */
   getProgress(): { current: number; total: number; pending: number } {
     const suggestions = this.getCurrentGroupSuggestions();
@@ -186,14 +186,14 @@ export class SuggestionManager implements ISuggestionManager {
   }
 
   /**
-   * Check if there are pending suggestions
+   * 检查是否有待处理的建议
    */
   hasPendingSuggestions(): boolean {
     return this.getAllSuggestions().some((s) => s.status === "pending");
   }
 
   /**
-   * Accept current suggestion
+   * 接受当前建议
    */
   acceptCurrent(): boolean {
     const current = this.getCurrentSuggestion();
@@ -208,7 +208,7 @@ export class SuggestionManager implements ISuggestionManager {
   }
 
   /**
-   * Reject current suggestion
+   * 拒绝当前建议
    */
   rejectCurrent(): boolean {
     const current = this.getCurrentSuggestion();
@@ -223,7 +223,7 @@ export class SuggestionManager implements ISuggestionManager {
   }
 
   /**
-   * Accept all suggestions
+   * 接受所有建议
    */
   acceptAll(): void {
     if (!this.currentGroupId) return;
@@ -238,11 +238,13 @@ export class SuggestionManager implements ISuggestionManager {
       group.status = "resolved";
     }
 
+    // 完成 - 清除原始状态存储
+    this.editor.commands.finalizeSuggestions();
     this._notifyChange();
   }
 
   /**
-   * Reject all suggestions
+   * 拒绝所有建议
    */
   rejectAll(): void {
     if (!this.currentGroupId) return;
@@ -257,11 +259,14 @@ export class SuggestionManager implements ISuggestionManager {
       group.status = "resolved";
     }
 
+    // 完成 - 清除原始状态存储
+    this.editor.commands.finalizeSuggestions();
+
     this._notifyChange();
   }
 
   /**
-   * Navigate to next suggestion
+   * 导航到下一个建议
    */
   nextSuggestion(): void {
     const pending = this.getCurrentGroupSuggestions().filter(
@@ -275,7 +280,7 @@ export class SuggestionManager implements ISuggestionManager {
   }
 
   /**
-   * Navigate to previous suggestion
+   * 导航到上一个建议
    */
   prevSuggestion(): void {
     const pending = this.getCurrentGroupSuggestions().filter(
@@ -289,7 +294,7 @@ export class SuggestionManager implements ISuggestionManager {
   }
 
   /**
-   * Move to next pending suggestion
+   * 移动到下一个待处理的建议
    */
   private _moveToNextPending(): void {
     const pending = this.getCurrentGroupSuggestions().filter(
@@ -298,28 +303,30 @@ export class SuggestionManager implements ISuggestionManager {
 
     if (pending.length === 0) {
       this.currentIndex = 0;
-      // Check if group is fully resolved
+      // 检查组是否已完全解决
       const group = this.currentGroupId
         ? this.groups.get(this.currentGroupId)
         : null;
       if (group) {
         group.status = "resolved";
       }
+      // 所有建议已解决 - 完成以清理存储
+      this.editor.commands.finalizeSuggestions();
     } else {
-      // Keep index in range
+      // 将索引保持在范围内
       this.currentIndex = Math.min(this.currentIndex, pending.length - 1);
       this._focusCurrentSuggestion();
     }
   }
 
   /**
-   * Focus editor on current suggestion
+   * 将 editor 焦点移到当前建议
    */
   private _focusCurrentSuggestion(): void {
     const current = this.getCurrentSuggestion();
     if (!current) return;
 
-    // Find the actual position in the document
+    // 在文档中查找实际位置
     let foundPos: number | null = null;
     this.editor.state.doc.descendants((node, pos) => {
       if (foundPos !== null) return false;
@@ -341,7 +348,7 @@ export class SuggestionManager implements ISuggestionManager {
       this.editor.commands.focus();
       this.editor.commands.setTextSelection(foundPos);
 
-      // Scroll into view
+      // 滚动到可见区域
       const domAtPos = this.editor.view.domAtPos(foundPos);
       if (domAtPos.node instanceof Element) {
         domAtPos.node.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -350,7 +357,7 @@ export class SuggestionManager implements ISuggestionManager {
   }
 
   /**
-   * Notify change listeners
+   * 通知更改监听器
    */
   private _notifyChange(): void {
     if (this.onChangeCallback) {
@@ -359,21 +366,21 @@ export class SuggestionManager implements ISuggestionManager {
   }
 
   /**
-   * Set change callback
+   * 设置更改回调
    */
   onChange(callback: SuggestionsChangedCallback): void {
     this.onChangeCallback = callback;
   }
 
   /**
-   * Get current group ID
+   * 获取当前组 ID
    */
   getCurrentGroupId(): string | null {
     return this.currentGroupId;
   }
 
   /**
-   * Clear all state
+   * 清除所有状态
    */
   clear(): void {
     this.groups.clear();
@@ -383,7 +390,7 @@ export class SuggestionManager implements ISuggestionManager {
   }
 
   /**
-   * Destroy the manager
+   * 销毁管理器
    */
   destroy(): void {
     this.groups.clear();

@@ -9,13 +9,13 @@ import type {
 } from "../types";
 
 /**
- * Suggestion Extension - AI-powered text suggestions for Tiptap
- * Supports showing diff between original and AI-suggested text
+ * Suggestion Extension - 为 Tiptap 提供 AI 驱动的文本建议功能
+ * 支持显示原文与 AI 建议文本之间的 diff
  */
 export const Suggestion = Mark.create<SuggestionOptions, SuggestionStorage>({
   name: "suggestion",
 
-  // Higher priority ensures suggestion marks are applied correctly
+  // 更高的优先级确保 suggestion mark 被正确应用
   priority: 1001,
 
   addOptions() {
@@ -76,9 +76,11 @@ export const Suggestion = Mark.create<SuggestionOptions, SuggestionStorage>({
     ];
   },
 
-  addStorage() {
+  addStorage(): SuggestionStorage {
     return {
       activeDiffId: null,
+      // 存储原始状态以支持正确的撤销行为
+      originalState: null,
     };
   },
 
@@ -102,12 +104,12 @@ export const Suggestion = Mark.create<SuggestionOptions, SuggestionStorage>({
   addCommands() {
     return {
       /**
-       * Apply AI suggestion diff to the editor
-       * @param originalText - The original text that was selected
-       * @param aiText - The AI-suggested replacement text
-       * @param from - Start position of the selection
-       * @param to - End position of the selection
-       * @param groupId - Optional group ID for batch operations
+       * 将 AI 建议的 diff 应用到 editor
+       * @param originalText - 被选中的原始文本
+       * @param aiText - AI 建议的替换文本
+       * @param from - 选区的起始位置
+       * @param to - 选区的结束位置
+       * @param groupId - 可选的组 ID，用于批量操作
        */
       applyAISuggestion:
         (
@@ -117,8 +119,16 @@ export const Suggestion = Mark.create<SuggestionOptions, SuggestionStorage>({
           to: number,
           groupId?: string
         ) =>
-        ({ state, dispatch }) => {
+        ({ state, dispatch, editor }) => {
           if (!dispatch) return true;
+
+          // 存储原始状态以支持撤销
+          const storage = (editor.storage as unknown as Record<string, SuggestionStorage>).suggestion;
+          storage.originalState = {
+            from,
+            to,
+            content: originalText,
+          };
 
           const dmp = new diff_match_patch();
           const diffs: Diff[] = dmp.diff_main(originalText, aiText);
@@ -128,7 +138,7 @@ export const Suggestion = Mark.create<SuggestionOptions, SuggestionStorage>({
           const tr = state.tr;
           const gId = groupId || `g${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
-          // Build all nodes first, then replace in one operation
+          // 先构建所有节点，然后一次性替换
           const nodes: ProseMirrorNode[] = [];
 
           diffs.forEach(([type, text]) => {
@@ -137,10 +147,10 @@ export const Suggestion = Mark.create<SuggestionOptions, SuggestionStorage>({
             const diffId = `d${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
             if (type === 0) {
-              // Equal - plain text, no mark
+              // 相同 - 纯文本，无 mark
               nodes.push(schema.text(text));
             } else if (type === 1) {
-              // Insert - AI added this text (green)
+              // 插入 - AI 添加的文本（绿色）
               const mark = schema.marks.suggestion.create({
                 type: "add" as SuggestionType,
                 diffId,
@@ -148,7 +158,7 @@ export const Suggestion = Mark.create<SuggestionOptions, SuggestionStorage>({
               });
               nodes.push(schema.text(text, [mark]));
             } else if (type === -1) {
-              // Delete - AI wants to remove this text (red strikethrough)
+              // 删除 - AI 想要移除的文本（红色删除线）
               const mark = schema.marks.suggestion.create({
                 type: "delete" as SuggestionType,
                 diffId,
@@ -158,23 +168,25 @@ export const Suggestion = Mark.create<SuggestionOptions, SuggestionStorage>({
             }
           });
 
-          // Replace original content with diff-marked content in one operation
+          // 一次性将原始内容替换为带有 diff 标记的内容
           if (nodes.length > 0) {
             tr.replaceWith(from, to, Fragment.from(nodes));
           }
 
-          // Mark this transaction as a suggestion operation
+          // 将此事务标记为 suggestion 操作
+          // 重要：不要添加到历史记录 - 中间的 diff 状态不应该可撤销
           tr.setMeta("suggestion", true);
           tr.setMeta("suggestionGroupId", gId);
+          tr.setMeta("addToHistory", false);
 
           dispatch(tr);
           return true;
         },
 
       /**
-       * Accept a single suggestion
-       * - For "add" type: keep the text, remove the mark
-       * - For "delete" type: remove the text entirely
+       * 接受单个建议
+       * - 对于 "add" 类型：保留文本，移除 mark
+       * - 对于 "delete" 类型：完全删除文本
        */
       acceptSuggestion:
         (diffId: string) =>
@@ -185,7 +197,7 @@ export const Suggestion = Mark.create<SuggestionOptions, SuggestionStorage>({
           const nodesToRemove: { from: number; to: number }[] = [];
           const marksToRemove: { from: number; to: number; mark: PMMark }[] = [];
 
-          // Find all nodes with this diffId
+          // 查找所有具有此 diffId 的节点
           state.doc.descendants((node, pos) => {
             const suggestionMark = node.marks.find(
               (mark) =>
@@ -199,24 +211,24 @@ export const Suggestion = Mark.create<SuggestionOptions, SuggestionStorage>({
               const to = pos + node.nodeSize;
 
               if (attrs.type === "delete") {
-                // Delete type: accepting means remove the text
+                // 删除类型：接受意味着移除文本
                 nodesToRemove.push({ from, to });
               } else {
-                // Add type: accepting means keep text, remove mark
+                // 添加类型：接受意味着保留文本，移除 mark
                 marksToRemove.push({ from, to, mark: suggestionMark });
               }
             }
             return true;
           });
 
-          // Process deletions in reverse order to maintain positions
+          // 按相反顺序处理删除以保持位置
           nodesToRemove
             .sort((a, b) => b.from - a.from)
             .forEach(({ from, to }) => {
               tr.delete(from, to);
             });
 
-          // Remove marks (positions may have shifted, use mapping)
+          // 移除 mark（位置可能已移动，使用 mapping）
           marksToRemove.forEach(({ from, to, mark }) => {
             const mappedFrom = tr.mapping.map(from);
             const mappedTo = tr.mapping.map(to);
@@ -224,14 +236,15 @@ export const Suggestion = Mark.create<SuggestionOptions, SuggestionStorage>({
           });
 
           tr.setMeta("suggestion", true);
+          tr.setMeta("addToHistory", false);
           dispatch(tr);
           return true;
         },
 
       /**
-       * Reject a single suggestion
-       * - For "add" type: remove the text entirely
-       * - For "delete" type: keep the text, remove the mark
+       * 拒绝单个建议
+       * - 对于 "add" 类型：完全删除文本
+       * - 对于 "delete" 类型：保留文本，移除 mark
        */
       rejectSuggestion:
         (diffId: string) =>
@@ -255,24 +268,24 @@ export const Suggestion = Mark.create<SuggestionOptions, SuggestionStorage>({
               const to = pos + node.nodeSize;
 
               if (attrs.type === "add") {
-                // Add type: rejecting means remove the text
+                // 添加类型：拒绝意味着移除文本
                 nodesToRemove.push({ from, to });
               } else {
-                // Delete type: rejecting means keep text, remove mark
+                // 删除类型：拒绝意味着保留文本，移除 mark
                 marksToRemove.push({ from, to, mark: suggestionMark });
               }
             }
             return true;
           });
 
-          // Process deletions in reverse order
+          // 按相反顺序处理删除
           nodesToRemove
             .sort((a, b) => b.from - a.from)
             .forEach(({ from, to }) => {
               tr.delete(from, to);
             });
 
-          // Remove marks
+          // 移除 mark
           marksToRemove.forEach(({ from, to, mark }) => {
             const mappedFrom = tr.mapping.map(from);
             const mappedTo = tr.mapping.map(to);
@@ -280,12 +293,13 @@ export const Suggestion = Mark.create<SuggestionOptions, SuggestionStorage>({
           });
 
           tr.setMeta("suggestion", true);
+          tr.setMeta("addToHistory", false);
           dispatch(tr);
           return true;
         },
 
       /**
-       * Accept all suggestions in a group (or all if no groupId provided)
+       * 接受组中的所有建议（如果未提供 groupId，则接受全部）
        */
       acceptAllSuggestions:
         (groupId?: string) =>
@@ -331,12 +345,13 @@ export const Suggestion = Mark.create<SuggestionOptions, SuggestionStorage>({
           });
 
           tr.setMeta("suggestion", true);
+          tr.setMeta("addToHistory", false);
           dispatch(tr);
           return true;
         },
 
       /**
-       * Reject all suggestions in a group (or all if no groupId provided)
+       * 拒绝组中的所有建议（如果未提供 groupId，则拒绝全部）
        */
       rejectAllSuggestions:
         (groupId?: string) =>
@@ -382,18 +397,47 @@ export const Suggestion = Mark.create<SuggestionOptions, SuggestionStorage>({
           });
 
           tr.setMeta("suggestion", true);
+          tr.setMeta("addToHistory", false);
           dispatch(tr);
           return true;
         },
 
       /**
-       * Clear all suggestions without accepting or rejecting
-       * Restores original text for deletions, removes additions
+       * 清除所有建议（不接受也不拒绝）
+       * 对于删除恢复原始文本，对于添加则移除
        */
       clearAllSuggestions:
         () =>
         ({ commands }) => {
           return commands.rejectAllSuggestions();
+        },
+
+      /**
+       * 完成建议处理 - 清除存储并创建历史记录
+       * 在所有建议都已解决后调用此方法
+       *
+       * 行为：
+       * - 创建一个会被记录到 history 的 transaction
+       * - Ctrl+Z 可以撤销到接受前的最终状态
+       * - 再次 Ctrl+Z 会回到 AI 处理前的状态
+       */
+      finalizeSuggestions:
+        () =>
+        ({ editor, state, dispatch }) => {
+          const storage = (editor.storage as unknown as Record<string, SuggestionStorage>).suggestion;
+          storage.originalState = null;
+
+          if (dispatch) {
+            // 创建一个会被记录到 history 的 transaction
+            // 使用 setMeta 标记这是一个有意义的状态变更
+            const tr = state.tr;
+            tr.setMeta("suggestionFinalized", true);
+            // 显式设置 addToHistory: true（默认行为，但明确表达意图）
+            tr.setMeta("addToHistory", true);
+            dispatch(tr);
+          }
+
+          return true;
         },
     };
   },

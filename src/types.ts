@@ -142,10 +142,20 @@ export interface SuggestionOptions {
 }
 
 /**
+ * Original state stored for undo purposes
+ */
+export interface SuggestionOriginalState {
+  from: number;
+  to: number;
+  content: string;
+}
+
+/**
  * Suggestion extension storage
  */
 export interface SuggestionStorage {
   activeDiffId: string | null;
+  originalState: SuggestionOriginalState | null;
 }
 
 /**
@@ -218,6 +228,7 @@ declare module "@tiptap/core" {
       acceptAllSuggestions: (groupId?: string) => ReturnType;
       rejectAllSuggestions: (groupId?: string) => ReturnType;
       clearAllSuggestions: () => ReturnType;
+      finalizeSuggestions: () => ReturnType;
     };
   }
 }

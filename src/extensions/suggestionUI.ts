@@ -2,8 +2,8 @@ import type { Editor } from "@tiptap/core";
 import type { ISuggestionManager, ISuggestionUI } from "../types";
 
 /**
- * SuggestionUI - Bottom bar UI for reviewing AI suggestions
- * Provides accept/reject controls for individual and batch operations
+ * SuggestionUI - 用于审阅 AI 建议的底部工具栏 UI
+ * 提供单个和批量操作的接受/拒绝控制
  */
 export class SuggestionUI implements ISuggestionUI {
   private suggestionManager: ISuggestionManager;
@@ -19,7 +19,7 @@ export class SuggestionUI implements ISuggestionUI {
   }
 
   /**
-   * Initialize UI
+   * 初始化 UI
    */
   private _init(): void {
     this._createContainer();
@@ -27,10 +27,10 @@ export class SuggestionUI implements ISuggestionUI {
   }
 
   /**
-   * Create suggestion bar container
+   * 创建建议栏容器
    */
   private _createContainer(): void {
-    // Check if already exists
+    // 检查是否已存在
     const existing = document.getElementById("suggestion-bar");
     if (existing) {
       this.container = existing;
@@ -42,7 +42,7 @@ export class SuggestionUI implements ISuggestionUI {
     this.container.className = "suggestion-bar hidden";
     this.container.innerHTML = this._getBarHTML();
 
-    // Insert at the bottom of editor-wrapper
+    // 插入到 editor-wrapper 底部
     const editorWrapper = document.querySelector(".editor-wrapper");
     if (editorWrapper) {
       editorWrapper.appendChild(this.container);
@@ -52,7 +52,7 @@ export class SuggestionUI implements ISuggestionUI {
   }
 
   /**
-   * Get bar HTML template
+   * 获取工具栏 HTML 模板
    */
   private _getBarHTML(): string {
     return `
@@ -103,12 +103,12 @@ export class SuggestionUI implements ISuggestionUI {
   }
 
   /**
-   * Attach event listeners
+   * 附加事件监听器
    */
   private _attachEventListeners(): void {
     if (!this.container) return;
 
-    // Click handlers for buttons
+    // 按钮的点击处理器
     this.container.addEventListener("click", (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const button = target.closest("button");
@@ -118,16 +118,16 @@ export class SuggestionUI implements ISuggestionUI {
       this._handleAction(action);
     });
 
-    // Listen for suggestion changes
+    // 监听建议更改
     this.suggestionManager.onChange(() => {
       this._render();
     });
 
-    // Keyboard shortcuts
+    // 键盘快捷键
     document.addEventListener("keydown", (e: KeyboardEvent) => {
       if (!this.isVisible) return;
 
-      // Don't intercept if user is typing in an input
+      // 如果用户正在输入框中输入则不拦截
       const activeElement = document.activeElement;
       if (
         activeElement instanceof HTMLInputElement ||
@@ -163,7 +163,7 @@ export class SuggestionUI implements ISuggestionUI {
   }
 
   /**
-   * Handle button actions
+   * 处理按钮操作
    */
   private _handleAction(action: string | undefined): void {
     if (!action) return;
@@ -189,18 +189,18 @@ export class SuggestionUI implements ISuggestionUI {
         break;
       case "close":
         this.hide();
-        this.suggestionManager.rejectAll(); // Close = reject all pending
+        this.suggestionManager.rejectAll(); // 关闭 = 拒绝所有待处理的建议
         break;
     }
 
-    // Check if we should hide the bar
+    // 检查是否应该隐藏工具栏
     if (!this.suggestionManager.hasPendingSuggestions()) {
       this.hide();
     }
   }
 
   /**
-   * Render the suggestion bar
+   * 渲染建议栏
    */
   private _render(): void {
     if (!this.container) return;
@@ -208,13 +208,13 @@ export class SuggestionUI implements ISuggestionUI {
     const current = this.suggestionManager.getCurrentSuggestion();
     const progress = this.suggestionManager.getProgress();
 
-    // Update progress
+    // 更新进度
     const progressEl = this.container.querySelector(".suggestion-progress");
     if (progressEl) {
       progressEl.textContent = `(${progress.pending}/${progress.total} pending)`;
     }
 
-    // Update current suggestion info
+    // 更新当前建议信息
     const typeEl = this.container.querySelector(".suggestion-type-badge");
     const previewEl = this.container.querySelector(".suggestion-preview");
 
@@ -237,7 +237,7 @@ export class SuggestionUI implements ISuggestionUI {
       }
     }
 
-    // Update button states
+    // 更新按钮状态
     const hasPending = this.suggestionManager.hasPendingSuggestions();
     this.container
       .querySelectorAll(".suggestion-btn, .suggestion-nav-btn")
@@ -245,7 +245,7 @@ export class SuggestionUI implements ISuggestionUI {
         (btn as HTMLButtonElement).disabled = !hasPending;
       });
 
-    // Auto-hide if no pending suggestions
+    // 如果没有待处理的建议则自动隐藏
     if (!hasPending && this.isVisible) {
       setTimeout(() => {
         if (!this.suggestionManager.hasPendingSuggestions()) {
@@ -256,7 +256,7 @@ export class SuggestionUI implements ISuggestionUI {
   }
 
   /**
-   * Truncate text for preview
+   * 截断文本用于预览
    */
   private _truncateText(text: string, maxLength: number): string {
     if (text.length <= maxLength) return text;
@@ -264,7 +264,7 @@ export class SuggestionUI implements ISuggestionUI {
   }
 
   /**
-   * Show the suggestion bar
+   * 显示建议栏
    */
   show(): void {
     if (!this.container) return;
@@ -274,7 +274,7 @@ export class SuggestionUI implements ISuggestionUI {
   }
 
   /**
-   * Hide the suggestion bar
+   * 隐藏建议栏
    */
   hide(): void {
     if (!this.container) return;
@@ -283,7 +283,7 @@ export class SuggestionUI implements ISuggestionUI {
   }
 
   /**
-   * Toggle visibility
+   * 切换可见性
    */
   toggle(): void {
     if (this.isVisible) {
@@ -294,14 +294,14 @@ export class SuggestionUI implements ISuggestionUI {
   }
 
   /**
-   * Check if visible
+   * 检查是否可见
    */
   getIsVisible(): boolean {
     return this.isVisible;
   }
 
   /**
-   * Destroy the UI
+   * 销毁 UI
    */
   destroy(): void {
     if (this.container && this.container.parentNode) {
