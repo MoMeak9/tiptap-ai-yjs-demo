@@ -4,7 +4,11 @@
       "Bash(pnpm run typecheck:*)",
       "Bash(cat:*)",
       "Bash(pnpm run build:*)",
-      "Bash(timeout 5 pnpm run dev:*)"
+      "Bash(timeout 5 pnpm run dev:*)",
+      "mcp__sequential-thinking__sequentialthinking",
+      "Bash(npm install:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

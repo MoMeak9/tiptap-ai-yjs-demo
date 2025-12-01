@@ -14,6 +14,9 @@ import { WebsocketProvider } from "y-websocket";
 import { Comment } from "./extensions/comment";
 import { CommentManager } from "./extensions/commentManager";
 import { CommentUI } from "./extensions/commentUI";
+import { Suggestion } from "./extensions/suggestion";
+import { SuggestionManager } from "./extensions/suggestionManager";
+import { SuggestionUI } from "./extensions/suggestionUI";
 import type { User } from "./types";
 
 // Random color generator
@@ -125,6 +128,12 @@ const editor = new Editor({
         commentManager.setActiveComment(commentId);
       },
     }),
+    Suggestion.configure({
+      HTMLAttributes: {},
+      onSuggestionActivated: (diffId: string | null) => {
+        console.log("Suggestion activated:", diffId);
+      },
+    }),
   ],
   content: "",
   onUpdate: ({ editor }) => {
@@ -168,6 +177,83 @@ const editor = new Editor({
 
 // Initialize comment UI
 const commentUI = new CommentUI(editor, commentManager);
+
+// Initialize suggestion manager and UI
+const suggestionManager = new SuggestionManager(editor);
+const suggestionUI = new SuggestionUI(editor, suggestionManager);
+
+/**
+ * Demo function: Apply AI suggestion to selected text
+ * This simulates what happens when AI returns a rewritten version of text
+ */
+function applyAISuggestionDemo(): void {
+  const { from, to } = editor.state.selection;
+
+  if (from === to) {
+    alert("Please select some text first to apply AI suggestion");
+    return;
+  }
+
+  // Get the original selected text
+  const originalText = editor.state.doc.textBetween(from, to);
+
+  // Simulate AI response - in real app, this would come from API
+  const aiText = simulateAIRewrite(originalText);
+
+  console.log("Original:", originalText);
+  console.log("AI Suggestion:", aiText);
+
+  // Apply the diff
+  const groupId = `g${Date.now()}`;
+  editor.commands.applyAISuggestion(originalText, aiText, from, to, groupId);
+
+  // Register the group and show UI
+  suggestionManager.registerGroup(groupId);
+  suggestionUI.show();
+}
+
+/**
+ * Simulate AI rewrite - replace with actual API call
+ */
+function simulateAIRewrite(text: string): string {
+  // Demo transformations to show diff capabilities
+  const transformations = [
+    // Grammar/style improvements
+    (t: string) => t.replace(/very /gi, "extremely "),
+    (t: string) => t.replace(/good/gi, "excellent"),
+    (t: string) => t.replace(/bad/gi, "poor"),
+    (t: string) => t.replace(/big/gi, "large"),
+    (t: string) => t.replace(/small/gi, "compact"),
+    // Add professional phrases
+    (t: string) => t.replace(/I think/gi, "In my professional opinion"),
+    (t: string) => t.replace(/maybe/gi, "perhaps"),
+    // Expand contractions
+    (t: string) => t.replace(/don't/gi, "do not"),
+    (t: string) => t.replace(/can't/gi, "cannot"),
+    (t: string) => t.replace(/won't/gi, "will not"),
+    // Add some text
+    (t: string) => t + " (AI enhanced)",
+  ];
+
+  let result = text;
+
+  // Apply some random transformations
+  transformations.forEach((transform) => {
+    if (Math.random() > 0.5) {
+      result = transform(result);
+    }
+  });
+
+  // If no changes were made, make at least one change
+  if (result === text) {
+    result = text + " [improved]";
+  }
+
+  return result;
+}
+
+// Expose demo function globally for testing
+(window as unknown as { applyAISuggestionDemo: () => void }).applyAISuggestionDemo = applyAISuggestionDemo;
 
 // Update character count
 function updateCharacterCount(editorInstance: Editor): void {
@@ -251,6 +337,9 @@ if (toolbar) {
         break;
       case "comment":
         commentUI.addCommentFromSelection();
+        break;
+      case "aiSuggest":
+        applyAISuggestionDemo();
         break;
     }
 
@@ -386,6 +475,8 @@ updateToolbarState();
 
 // Cleanup resources
 window.addEventListener("beforeunload", () => {
+  suggestionManager.destroy();
+  suggestionUI.destroy();
   commentManager.destroy();
   commentUI.destroy();
   provider.destroy();
@@ -395,3 +486,4 @@ window.addEventListener("beforeunload", () => {
 console.log("✨ Tiptap Collaborative Editor started!");
 console.log("📡 WebSocket Provider:", provider);
 console.log("👤 Current user:", currentUser);
+console.log("💡 AI Suggestion: Select text and click '🤖 AI' button or run applyAISuggestionDemo() in console");
