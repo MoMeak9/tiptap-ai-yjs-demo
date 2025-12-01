@@ -1,38 +1,60 @@
 import * as Y from "yjs";
+import type { WebsocketProvider } from "y-websocket";
+import type {
+  User,
+  Comment,
+  CommentData,
+  CommentReply,
+  CommentsChangedCallback,
+  ActiveCommentChangedCallback,
+  ICommentManager,
+} from "../types";
 
 /**
- * CommentManager - 评论管理器
- * 负责管理评论数据,并与 Yjs 集成实现多人协同
+ * CommentManager - Comment data manager with Yjs integration
+ * Manages comment data and syncs across collaborative sessions
  */
-export class CommentManager {
-  constructor(ydoc, provider) {
+export class CommentManager implements ICommentManager {
+  private ydoc: Y.Doc;
+  private provider: WebsocketProvider;
+  private commentsMap: Y.Map<CommentData>;
+  private comments: Comment[];
+  private activeCommentId: string | null;
+  private onCommentsChanged: CommentsChangedCallback | null;
+  private onActiveCommentChanged: ActiveCommentChangedCallback | null;
+  private boundHandleChange: (event: Y.YMapEvent<CommentData>) => void;
+
+  constructor(ydoc: Y.Doc, provider: WebsocketProvider) {
     this.ydoc = ydoc;
     this.provider = provider;
 
-    // 使用 Yjs Map 存储评论数据,实现多人协同
-    this.commentsMap = ydoc.getMap("comments");
+    // Use Yjs Map for collaborative comment storage
+    this.commentsMap = ydoc.getMap<CommentData>("comments");
 
-    // 本地评论列表缓存
+    // Local comment cache
     this.comments = [];
 
-    // 当前激活的评论ID
+    // Currently active comment ID
     this.activeCommentId = null;
 
-    // 回调函数
+    // Callbacks
     this.onCommentsChanged = null;
     this.onActiveCommentChanged = null;
 
-    // 监听 Yjs Map 变化
-    this.commentsMap.observe(this._handleCommentsMapChange.bind(this));
+    // Bind the handler to preserve context
+    this.boundHandleChange = this._handleCommentsMapChange.bind(this);
 
-    // 初始化加载现有评论
+    // Observe Yjs Map changes
+    this.commentsMap.observe(this.boundHandleChange);
+
+    // Load existing comments
     this._loadComments();
   }
 
   /**
-   * 处理 Yjs Map 变化
+   * Handle Yjs Map changes
    */
-  _handleCommentsMapChange(event) {
+  private _handleCommentsMapChange(_event: Y.YMapEvent<CommentData>): void {
     this._loadComments();
 
     if (this.onCommentsChanged) {
@@ -41,11 +63,11 @@ export class CommentManager {
   }
 
   /**
-   * 从 Yjs Map 加载评论
+   * Load comments from Yjs Map
    */
-  _loadComments() {
+  private _loadComments(): void {
     this.comments = [];
-    this.commentsMap.forEach((value, key) => {
+    this.commentsMap.forEach((value: CommentData, key: string) => {
       this.comments.push({
         id: key,
         ...value,
@@ -54,43 +76,43 @@ export class CommentManager {
       });
     });
 
-    // 按创建时间排序
-    this.comments.sort((a, b) => a.createdAt - b.createdAt);
+    // Sort by creation time
+    this.comments.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   }
 
   /**
-   * 生成唯一的评论ID
+   * Generate unique comment ID
    */
-  _generateCommentId() {
-    // 使用时间戳和随机数生成唯一ID
-    // 添加 'c' 前缀确保ID是有效的HTML ID
-    return `c${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  private _generateCommentId(): string {
+    // Use timestamp and random string for unique ID
+    // 'c' prefix ensures valid HTML ID
+    return `c${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   }
 
   /**
-   * 获取当前用户信息
+   * Get current user info from awareness
    */
-  _getCurrentUser() {
+  private _getCurrentUser(): User {
     const awarenessStates = this.provider.awareness.getStates();
     const clientId = this.provider.awareness.clientID;
-    const userState = awarenessStates.get(clientId);
+    const userState = awarenessStates.get(clientId) as { user?: User } | undefined;
 
     return (
-      userState?.user || {
-        name: "匿名用户",
+      userState?.user ?? {
+        name: "Anonymous",
         color: "#999999",
       }
     );
   }
 
   /**
-   * 添加新评论
+   * Add a new comment
    */
-  addComment(content = "") {
+  addComment(content: string = ""): string {
     const user = this._getCurrentUser();
     const commentId = this._generateCommentId();
 
-    const comment = {
+    const comment: CommentData = {
       content,
       author: user.name,
       authorColor: user.color,
@@ -99,7 +121,7 @@ export class CommentManager {
       replies: [],
     };
 
-    // 使用 Yjs 事务更新,确保原子性
+    // Use Yjs transaction for atomicity
     this.ydoc.transact(() => {
       this.commentsMap.set(commentId, comment);
     });
@@ -108,9 +130,9 @@ export class CommentManager {
   }
 
   /**
-   * 更新评论内容
+   * Update comment content
    */
-  updateComment(commentId, content) {
+  updateComment(commentId: string, content: string): boolean {
     const comment = this.commentsMap.get(commentId);
     if (!comment) {
       console.error("Comment not found:", commentId);
@@ -129,9 +151,9 @@ export class CommentManager {
   }
 
   /**
-   * 删除评论
+   * Delete a comment
    */
-  deleteComment(commentId) {
+  deleteComment(commentId: string): boolean {
     if (!this.commentsMap.has(commentId)) {
       console.error("Comment not found:", commentId);
       return false;
@@ -145,9 +167,9 @@ export class CommentManager {
   }
 
   /**
-   * 添加回复
+   * Add a reply to a comment
    */
-  addReply(commentId, content) {
+  addReply(commentId: string, content: string): string | false {
     const comment = this.commentsMap.get(commentId);
     if (!comment) {
       console.error("Comment not found:", commentId);
@@ -157,7 +179,7 @@ export class CommentManager {
     const user = this._getCurrentUser();
     const replyId = this._generateCommentId();
 
-    const reply = {
+    const reply: CommentReply = {
       id: replyId,
       content,
       author: user.name,
@@ -178,9 +200,9 @@ export class CommentManager {
   }
 
   /**
-   * 删除回复
+   * Delete a reply
    */
-  deleteReply(commentId, replyId) {
+  deleteReply(commentId: string, replyId: string): boolean {
     const comment = this.commentsMap.get(commentId);
     if (!comment) {
       console.error("Comment not found:", commentId);
@@ -202,23 +224,23 @@ export class CommentManager {
   }
 
   /**
-   * 获取所有评论
+   * Get all comments
    */
-  getComments() {
+  getComments(): Comment[] {
     return this.comments;
   }
 
   /**
-   * 获取单个评论
+   * Get a single comment
    */
-  getComment(commentId) {
+  getComment(commentId: string): Comment | undefined {
     return this.comments.find((c) => c.id === commentId);
   }
 
   /**
-   * 设置激活的评论
+   * Set the active comment
    */
-  setActiveComment(commentId) {
+  setActiveComment(commentId: string | null): void {
     if (this.activeCommentId !== commentId) {
       this.activeCommentId = commentId;
       if (this.onActiveCommentChanged) {
@@ -228,38 +250,38 @@ export class CommentManager {
   }
 
   /**
-   * 获取激活的评论
+   * Get the active comment ID
    */
-  getActiveComment() {
+  getActiveComment(): string | null {
     return this.activeCommentId;
   }
 
   /**
-   * 清除激活的评论
+   * Clear the active comment
    */
-  clearActiveComment() {
+  clearActiveComment(): void {
     this.setActiveComment(null);
   }
 
   /**
-   * 设置评论变化回调
+   * Set comments changed callback
    */
-  onUpdate(callback) {
+  onUpdate(callback: CommentsChangedCallback): void {
     this.onCommentsChanged = callback;
   }
 
   /**
-   * 设置激活评论变化回调
+   * Set active comment changed callback
    */
-  onActiveUpdate(callback) {
+  onActiveUpdate(callback: ActiveCommentChangedCallback): void {
     this.onActiveCommentChanged = callback;
   }
 
   /**
-   * 销毁管理器
+   * Destroy the manager and clean up
    */
-  destroy() {
-    this.commentsMap.unobserve(this._handleCommentsMapChange);
+  destroy(): void {
+    this.commentsMap.unobserve(this.boundHandleChange);
     this.comments = [];
     this.activeCommentId = null;
     this.onCommentsChanged = null;

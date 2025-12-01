@@ -1,9 +1,17 @@
+import type { Editor } from "@tiptap/core";
+import type { Comment, ICommentUI, ICommentManager, CommentReply } from "../types";
+
 /**
- * CommentUI - 评论界面管理
- * 负责渲染和管理评论面板UI
+ * CommentUI - Comment panel UI manager
+ * Renders and manages the comment sidebar UI
  */
-export class CommentUI {
-  constructor(editor, commentManager) {
+export class CommentUI implements ICommentUI {
+  private editor: Editor;
+  private commentManager: ICommentManager;
+  private container: HTMLElement | null;
+  private isVisible: boolean;
+
+  constructor(editor: Editor, commentManager: ICommentManager) {
     this.editor = editor;
     this.commentManager = commentManager;
     this.container = null;
@@ -13,20 +21,20 @@ export class CommentUI {
   }
 
   /**
-   * 初始化UI
+   * Initialize UI
    */
-  _init() {
+  private _init(): void {
     this._createContainer();
     this._attachEventListeners();
     this._render();
   }
 
   /**
-   * 创建评论面板容器
+   * Create comment panel container
    */
-  _createContainer() {
-    // 检查是否已存在
-    let existing = document.getElementById("comment-sidebar");
+  private _createContainer(): void {
+    // Check if already exists
+    const existing = document.getElementById("comment-sidebar");
     if (existing) {
       this.container = existing;
       return;
@@ -37,9 +45,9 @@ export class CommentUI {
     this.container.className = "comment-sidebar";
     this.container.innerHTML = `
       <div class="comment-sidebar-header">
-        <h3>💬 评论</h3>
-        <button class="comment-toggle-btn" title="隐藏评论面板">
-          <span>−</span>
+        <h3>Comments</h3>
+        <button class="comment-toggle-btn" title="Hide comment panel">
+          <span>-</span>
         </button>
       </div>
       <div class="comment-sidebar-content">
@@ -47,7 +55,7 @@ export class CommentUI {
       </div>
     `;
 
-    // 插入到编辑器包装器中
+    // Insert into editor wrapper
     const editorWrapper = document.querySelector(".editor-wrapper");
     if (editorWrapper) {
       editorWrapper.appendChild(this.container);
@@ -57,35 +65,39 @@ export class CommentUI {
   }
 
   /**
-   * 附加事件监听器
+   * Attach event listeners
    */
-  _attachEventListeners() {
-    // 切换面板显示/隐藏
+  private _attachEventListeners(): void {
+    if (!this.container) return;
+
+    // Toggle panel visibility
     const toggleBtn = this.container.querySelector(".comment-toggle-btn");
     if (toggleBtn) {
       toggleBtn.addEventListener("click", () => this.toggle());
     }
 
-    // 监听评论变化
-    this.commentManager.onUpdate((comments) => {
+    // Listen for comment changes
+    this.commentManager.onUpdate((_comments: Comment[]) => {
       this._render();
     });
 
-    // 监听激活评论变化
-    this.commentManager.onActiveUpdate((commentId) => {
+    // Listen for active comment changes
+    this.commentManager.onActiveUpdate((commentId: string | null) => {
       this._highlightActiveComment(commentId);
     });
 
-    // 监听快捷键添加评论
+    // Listen for keyboard shortcut
     window.addEventListener("add-comment-shortcut", () => {
       this.addCommentFromSelection();
     });
   }
 
   /**
-   * 渲染评论列表
+   * Render comment list
    */
-  _render() {
+  private _render(): void {
+    if (!this.container) return;
+
     const comments = this.commentManager.getComments();
     const listContainer = this.container.querySelector(".comment-list");
 
@@ -94,8 +106,8 @@ export class CommentUI {
     if (comments.length === 0) {
       listContainer.innerHTML = `
         <div class="comment-empty">
-          <p>暂无评论</p>
-          <p class="comment-hint">选中文本后点击工具栏的评论按钮添加评论</p>
+          <p>No comments</p>
+          <p class="comment-hint">Select text and click the comment button to add a comment</p>
         </div>
       `;
       return;
@@ -105,172 +117,163 @@ export class CommentUI {
       .map((comment) => this._renderCommentItem(comment))
       .join("");
 
-    // 为每个评论项附加事件
+    // Attach events for each comment item
     comments.forEach((comment) => {
       this._attachCommentEvents(comment.id);
     });
   }
 
   /**
-   * 渲染单个评论项
+   * Render a single comment item
    */
-  _renderCommentItem(comment) {
+  private _renderCommentItem(comment: Comment): string {
     const isActive = this.commentManager.getActiveComment() === comment.id;
     const replies = comment.replies || [];
 
     return `
-      <div class="comment-item ${isActive ? "active" : ""}" data-comment-id="${
-      comment.id
-    }">
+      <div class="comment-item ${isActive ? "active" : ""}" data-comment-id="${comment.id}">
         <div class="comment-header">
           <div class="comment-author" style="color: ${comment.authorColor}">
-            <span class="comment-author-avatar" style="background-color: ${
-              comment.authorColor
-            }">
+            <span class="comment-author-avatar" style="background-color: ${comment.authorColor}">
               ${comment.author.charAt(0).toUpperCase()}
             </span>
-            <span class="comment-author-name">${comment.author}</span>
+            <span class="comment-author-name">${this._escapeHtml(comment.author)}</span>
           </div>
           <div class="comment-actions">
-            <button class="comment-locate-btn" data-comment-id="${
-              comment.id
-            }" title="定位到文本">
+            <button class="comment-locate-btn" data-comment-id="${comment.id}" title="Locate text">
               📍
             </button>
-            <button class="comment-delete-btn" data-comment-id="${
-              comment.id
-            }" title="删除评论">
+            <button class="comment-delete-btn" data-comment-id="${comment.id}" title="Delete comment">
               🗑️
             </button>
           </div>
         </div>
-        
+
         <div class="comment-content">
-          <textarea 
-            class="comment-textarea" 
+          <textarea
+            class="comment-textarea"
             data-comment-id="${comment.id}"
-            placeholder="输入评论内容..."
+            placeholder="Enter comment..."
             ${isActive ? "" : "readonly"}
-          >${comment.content || ""}</textarea>
+          >${this._escapeHtml(comment.content || "")}</textarea>
         </div>
 
         <div class="comment-meta">
-          <span class="comment-time">${this._formatTime(
-            comment.createdAt
-          )}</span>
-          ${
-            comment.updatedAt
-              ? `<span class="comment-updated">(已编辑)</span>`
-              : ""
-          }
+          <span class="comment-time">${this._formatTime(comment.createdAt)}</span>
+          ${comment.updatedAt ? `<span class="comment-updated">(edited)</span>` : ""}
         </div>
 
         ${
           replies.length > 0
             ? `
           <div class="comment-replies">
-            ${replies.map((reply) => this._renderReply(reply)).join("")}
+            ${replies.map((reply) => this._renderReply(comment.id, reply)).join("")}
           </div>
         `
             : ""
         }
 
         <div class="comment-reply-form">
-          <input 
-            type="text" 
-            class="comment-reply-input" 
-            placeholder="添加回复..."
+          <input
+            type="text"
+            class="comment-reply-input"
+            placeholder="Add reply..."
             data-comment-id="${comment.id}"
           />
-          <button class="comment-reply-btn" data-comment-id="${
-            comment.id
-          }">回复</button>
+          <button class="comment-reply-btn" data-comment-id="${comment.id}">Reply</button>
         </div>
       </div>
     `;
   }
 
   /**
-   * 渲染回复
+   * Render a reply
    */
-  _renderReply(reply) {
+  private _renderReply(commentId: string, reply: CommentReply): string {
     return `
       <div class="comment-reply" data-reply-id="${reply.id}">
         <div class="comment-reply-header">
           <span class="comment-author" style="color: ${reply.authorColor}">
-            <span class="comment-author-avatar" style="background-color: ${
-              reply.authorColor
-            }">
+            <span class="comment-author-avatar" style="background-color: ${reply.authorColor}">
               ${reply.author.charAt(0).toUpperCase()}
             </span>
-            ${reply.author}
+            ${this._escapeHtml(reply.author)}
           </span>
-          <button class="comment-reply-delete-btn" data-reply-id="${
-            reply.id
-          }" title="删除回复">
+          <button class="comment-reply-delete-btn" data-comment-id="${commentId}" data-reply-id="${reply.id}" title="Delete reply">
             ×
           </button>
         </div>
-        <div class="comment-reply-content">${reply.content}</div>
-        <div class="comment-reply-time">${this._formatTime(
-          new Date(reply.createdAt)
-        )}</div>
+        <div class="comment-reply-content">${this._escapeHtml(reply.content)}</div>
+        <div class="comment-reply-time">${this._formatTime(new Date(reply.createdAt))}</div>
       </div>
     `;
   }
 
   /**
-   * 为评论项附加事件
+   * Escape HTML to prevent XSS
    */
-  _attachCommentEvents(commentId) {
+  private _escapeHtml(text: string): string {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  /**
+   * Attach events to a comment item
+   */
+  private _attachCommentEvents(commentId: string): void {
+    if (!this.container) return;
+
     const commentItem = this.container.querySelector(
       `.comment-item[data-comment-id="${commentId}"]`
     );
     if (!commentItem) return;
 
-    // 点击评论项激活
-    commentItem.addEventListener("click", (e) => {
+    // Click to activate comment
+    commentItem.addEventListener("click", (e: Event) => {
+      const target = e.target as HTMLElement;
       if (
-        e.target.tagName === "BUTTON" ||
-        e.target.tagName === "TEXTAREA" ||
-        e.target.tagName === "INPUT"
+        target.tagName === "BUTTON" ||
+        target.tagName === "TEXTAREA" ||
+        target.tagName === "INPUT"
       ) {
         return;
       }
       this._activateComment(commentId);
     });
 
-    // 评论内容变化
-    const textarea = commentItem.querySelector(".comment-textarea");
+    // Comment content change
+    const textarea = commentItem.querySelector(".comment-textarea") as HTMLTextAreaElement | null;
     if (textarea) {
-      textarea.addEventListener("input", (e) => {
-        this.commentManager.updateComment(commentId, e.target.value);
+      textarea.addEventListener("input", (e: Event) => {
+        const target = e.target as HTMLTextAreaElement;
+        this.commentManager.updateComment(commentId, target.value);
       });
     }
 
-    // 删除评论
+    // Delete comment
     const deleteBtn = commentItem.querySelector(".comment-delete-btn");
     if (deleteBtn) {
-      deleteBtn.addEventListener("click", (e) => {
+      deleteBtn.addEventListener("click", (e: Event) => {
         e.stopPropagation();
         this._deleteComment(commentId);
       });
     }
 
-    // 定位到文本
+    // Locate text
     const locateBtn = commentItem.querySelector(".comment-locate-btn");
     if (locateBtn) {
-      locateBtn.addEventListener("click", (e) => {
+      locateBtn.addEventListener("click", (e: Event) => {
         e.stopPropagation();
         this._locateComment(commentId);
       });
     }
 
-    // 添加回复
-    const replyInput = commentItem.querySelector(".comment-reply-input");
+    // Add reply
+    const replyInput = commentItem.querySelector(".comment-reply-input") as HTMLInputElement | null;
     const replyBtn = commentItem.querySelector(".comment-reply-btn");
     if (replyInput && replyBtn) {
-      const addReply = () => {
+      const addReply = (): void => {
         const content = replyInput.value.trim();
         if (content) {
           this.commentManager.addReply(commentId, content);
@@ -278,12 +281,12 @@ export class CommentUI {
         }
       };
 
-      replyBtn.addEventListener("click", (e) => {
+      replyBtn.addEventListener("click", (e: Event) => {
         e.stopPropagation();
         addReply();
       });
 
-      replyInput.addEventListener("keypress", (e) => {
+      replyInput.addEventListener("keypress", (e: KeyboardEvent) => {
         if (e.key === "Enter") {
           e.preventDefault();
           addReply();
@@ -291,40 +294,43 @@ export class CommentUI {
       });
     }
 
-    // 删除回复
-    const replyDeleteBtns = commentItem.querySelectorAll(
-      ".comment-reply-delete-btn"
-    );
+    // Delete reply
+    const replyDeleteBtns = commentItem.querySelectorAll(".comment-reply-delete-btn");
     replyDeleteBtns.forEach((btn) => {
-      btn.addEventListener("click", (e) => {
+      btn.addEventListener("click", (e: Event) => {
         e.stopPropagation();
-        const replyId = btn.dataset.replyId;
-        this.commentManager.deleteReply(commentId, replyId);
+        const target = e.currentTarget as HTMLElement;
+        const replyId = target.dataset.replyId;
+        if (replyId) {
+          this.commentManager.deleteReply(commentId, replyId);
+        }
       });
     });
   }
 
   /**
-   * 激活评论
+   * Activate a comment
    */
-  _activateComment(commentId) {
+  private _activateComment(commentId: string): void {
     this.commentManager.setActiveComment(commentId);
     this._highlightActiveComment(commentId);
 
-    // 聚焦到对应文本
+    // Focus on the corresponding text
     this._locateComment(commentId);
   }
 
   /**
-   * 高亮激活的评论
+   * Highlight the active comment
    */
-  _highlightActiveComment(commentId) {
-    // 移除所有激活状态
+  private _highlightActiveComment(commentId: string | null): void {
+    if (!this.container) return;
+
+    // Remove all active states
     this.container
       .querySelectorAll(".comment-item.active")
       .forEach((item) => item.classList.remove("active"));
 
-    // 添加新的激活状态
+    // Add new active state
     if (commentId) {
       const activeItem = this.container.querySelector(
         `.comment-item[data-comment-id="${commentId}"]`
@@ -333,8 +339,8 @@ export class CommentUI {
         activeItem.classList.add("active");
         activeItem.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
-        // 使 textarea 可编辑
-        const textarea = activeItem.querySelector(".comment-textarea");
+        // Make textarea editable
+        const textarea = activeItem.querySelector(".comment-textarea") as HTMLTextAreaElement | null;
         if (textarea) {
           textarea.removeAttribute("readonly");
           textarea.focus();
@@ -342,7 +348,7 @@ export class CommentUI {
       }
     }
 
-    // 设置所有非激活的 textarea 为只读
+    // Set all non-active textareas to readonly
     this.container
       .querySelectorAll(".comment-item:not(.active) .comment-textarea")
       .forEach((textarea) => {
@@ -351,16 +357,16 @@ export class CommentUI {
   }
 
   /**
-   * 定位到评论对应的文本
+   * Locate the text corresponding to a comment
    */
-  _locateComment(commentId) {
+  private _locateComment(commentId: string): void {
     const { state } = this.editor;
     const { doc } = state;
 
     let found = false;
-    let foundPos = null;
+    let foundPos: number | null = null;
 
-    // 查找包含该评论的文本位置
+    // Find the text position containing this comment
     doc.descendants((node, pos) => {
       if (found) return false;
 
@@ -373,17 +379,18 @@ export class CommentUI {
         found = true;
         foundPos = pos;
       }
+      return true;
     });
 
     if (found && foundPos !== null) {
-      // 滚动到该位置并选中
+      // Scroll to position and select
       this.editor.commands.focus();
       this.editor.commands.setTextSelection(foundPos);
 
-      // 滚动编辑器到可见区域
+      // Scroll editor into view
       const editorElement = this.editor.view.dom;
       const selection = window.getSelection();
-      if (selection.rangeCount > 0) {
+      if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
         const rect = range.getBoundingClientRect();
         if (rect.top < 0 || rect.bottom > window.innerHeight) {
@@ -394,17 +401,17 @@ export class CommentUI {
   }
 
   /**
-   * 删除评论
+   * Delete a comment
    */
-  _deleteComment(commentId) {
-    if (confirm("确定要删除这条评论吗?")) {
-      // 从编辑器中移除标记
+  private _deleteComment(commentId: string): void {
+    if (confirm("Are you sure you want to delete this comment?")) {
+      // Remove mark from editor
       this.editor.commands.unsetComment(commentId);
 
-      // 从管理器中删除
+      // Delete from manager
       this.commentManager.deleteComment(commentId);
 
-      // 如果是当前激活的评论,清除激活状态
+      // Clear active state if this was the active comment
       if (this.commentManager.getActiveComment() === commentId) {
         this.commentManager.clearActiveComment();
       }
@@ -412,30 +419,31 @@ export class CommentUI {
   }
 
   /**
-   * 从选区添加评论
+   * Add comment from current selection
    */
-  addCommentFromSelection() {
+  addCommentFromSelection(): void {
     const { from, to } = this.editor.state.selection;
 
     if (from === to) {
-      alert("请先选择要评论的文本");
+      alert("Please select text to comment on");
       return;
     }
 
-    // 创建新评论
+    // Create new comment
     const commentId = this.commentManager.addComment("");
 
-    // 应用评论标记
+    // Apply comment mark
     this.editor.commands.setComment(commentId);
 
-    // 激活该评论
+    // Activate the comment
     this.commentManager.setActiveComment(commentId);
 
-    // 聚焦到评论输入框
+    // Focus on comment input
     setTimeout(() => {
+      if (!this.container) return;
       const textarea = this.container.querySelector(
         `.comment-item[data-comment-id="${commentId}"] .comment-textarea`
-      );
+      ) as HTMLTextAreaElement | null;
       if (textarea) {
         textarea.focus();
       }
@@ -443,33 +451,33 @@ export class CommentUI {
   }
 
   /**
-   * 格式化时间
+   * Format time for display
    */
-  _formatTime(date) {
+  private _formatTime(date: Date | null): string {
     if (!date) return "";
 
     const now = new Date();
-    const diff = now - date;
+    const diff = now.getTime() - date.getTime();
 
-    // 小于1分钟
+    // Less than 1 minute
     if (diff < 60 * 1000) {
-      return "刚刚";
+      return "Just now";
     }
 
-    // 小于1小时
+    // Less than 1 hour
     if (diff < 60 * 60 * 1000) {
       const minutes = Math.floor(diff / (60 * 1000));
-      return `${minutes}分钟前`;
+      return `${minutes}m ago`;
     }
 
-    // 小于1天
+    // Less than 1 day
     if (diff < 24 * 60 * 60 * 1000) {
       const hours = Math.floor(diff / (60 * 60 * 1000));
-      return `${hours}小时前`;
+      return `${hours}h ago`;
     }
 
-    // 显示日期
-    return date.toLocaleDateString("zh-CN", {
+    // Show date
+    return date.toLocaleDateString("en-US", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
@@ -479,38 +487,44 @@ export class CommentUI {
   }
 
   /**
-   * 切换显示/隐藏
+   * Toggle panel visibility
    */
-  toggle() {
+  toggle(): void {
     this.isVisible = !this.isVisible;
-    this.container.classList.toggle("collapsed", !this.isVisible);
+    if (this.container) {
+      this.container.classList.toggle("collapsed", !this.isVisible);
+    }
 
-    const toggleBtn = this.container.querySelector(".comment-toggle-btn span");
+    const toggleBtn = this.container?.querySelector(".comment-toggle-btn span");
     if (toggleBtn) {
-      toggleBtn.textContent = this.isVisible ? "−" : "+";
+      toggleBtn.textContent = this.isVisible ? "-" : "+";
     }
   }
 
   /**
-   * 显示面板
+   * Show the panel
    */
-  show() {
+  show(): void {
     this.isVisible = true;
-    this.container.classList.remove("collapsed");
+    if (this.container) {
+      this.container.classList.remove("collapsed");
+    }
   }
 
   /**
-   * 隐藏面板
+   * Hide the panel
    */
-  hide() {
+  hide(): void {
     this.isVisible = false;
-    this.container.classList.add("collapsed");
+    if (this.container) {
+      this.container.classList.add("collapsed");
+    }
   }
 
   /**
-   * 销毁UI
+   * Destroy the UI
    */
-  destroy() {
+  destroy(): void {
     if (this.container && this.container.parentNode) {
       this.container.parentNode.removeChild(this.container);
     }

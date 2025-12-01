@@ -1,37 +1,39 @@
 import { Mark, mergeAttributes } from "@tiptap/core";
+import type { Mark as PMMark } from "@tiptap/pm/model";
+import type { CommentOptions, CommentStorage, CommentAttributes } from "../types";
+
+interface MarkWithRange {
+  mark: PMMark;
+  range: { from: number; to: number };
+}
 
 /**
- * Comment Extension - 评论扩展
- * 支持在文本上添加评论标记,并与 yjs 协同编辑集成
+ * Comment Extension - Collaborative comment marks for Tiptap
+ * Supports adding comment marks to text with Yjs integration
  */
-export const Comment = Mark.create({
+export const Comment = Mark.create<CommentOptions, CommentStorage>({
   name: "comment",
 
-  // 扩展优先级,设置较高优先级确保评论标记能正确应用
+  // Higher priority ensures comment marks are applied correctly
   priority: 1000,
 
-  // 配置选项
   addOptions() {
     return {
       HTMLAttributes: {
         class: "tiptap-comment",
       },
-      // 当评论被激活时的回调
-      onCommentActivated: (commentId) => {
+      onCommentActivated: (commentId: string | null) => {
         console.log("Comment activated:", commentId);
       },
     };
   },
 
-  // 添加属性
   addAttributes() {
     return {
       commentId: {
         default: null,
-        // 从 HTML 解析属性
-        parseHTML: (element) => element.getAttribute("data-comment-id"),
-        // 渲染到 HTML
-        renderHTML: (attributes) => {
+        parseHTML: (element: HTMLElement) => element.getAttribute("data-comment-id"),
+        renderHTML: (attributes: CommentAttributes) => {
           if (!attributes.commentId) {
             return {};
           }
@@ -43,12 +45,12 @@ export const Comment = Mark.create({
     };
   },
 
-  // 解析 HTML
   parseHTML() {
     return [
       {
         tag: "span[data-comment-id]",
-        getAttrs: (element) => {
+        getAttrs: (element: HTMLElement | string) => {
+          if (typeof element === "string") return false;
           const commentId = element.getAttribute("data-comment-id");
           return commentId && commentId.trim() ? null : false;
         },
@@ -56,7 +58,6 @@ export const Comment = Mark.create({
     ];
   },
 
-  // 渲染 HTML
   renderHTML({ HTMLAttributes }) {
     return [
       "span",
@@ -65,14 +66,12 @@ export const Comment = Mark.create({
     ];
   },
 
-  // 添加存储,用于跟踪当前激活的评论
   addStorage() {
     return {
       activeCommentId: null,
     };
   },
 
-  // 选中文本变化时触发
   onSelectionUpdate() {
     const { $from } = this.editor.state.selection;
     const marks = $from.marks();
@@ -86,24 +85,19 @@ export const Comment = Mark.create({
     const commentMark = this.editor.schema.marks.comment;
     const activeCommentMark = marks.find((mark) => mark.type === commentMark);
 
-    const newActiveId = activeCommentMark?.attrs.commentId || null;
+    const newActiveId = (activeCommentMark?.attrs as CommentAttributes)?.commentId ?? null;
 
-    // 只在 ID 变化时触发回调
+    // Only trigger callback when ID changes
     if (this.storage.activeCommentId !== newActiveId) {
       this.storage.activeCommentId = newActiveId;
       this.options.onCommentActivated(newActiveId);
     }
   },
 
-  // 添加命令
   addCommands() {
     return {
-      /**
-       * 设置评论标记
-       * @param {string} commentId - 评论ID
-       */
       setComment:
-        (commentId) =>
+        (commentId: string) =>
         ({ commands }) => {
           if (!commentId) {
             console.error("Comment ID is required");
@@ -112,26 +106,22 @@ export const Comment = Mark.create({
           return commands.setMark(this.name, { commentId });
         },
 
-      /**
-       * 取消评论标记
-       * @param {string} commentId - 评论ID
-       */
       unsetComment:
-        (commentId) =>
+        (commentId: string) =>
         ({ tr, dispatch }) => {
           if (!commentId) {
             console.error("Comment ID is required");
             return false;
           }
 
-          const commentMarksWithRange = [];
+          const commentMarksWithRange: MarkWithRange[] = [];
 
-          // 遍历文档找到所有匹配的评论标记
+          // Find all matching comment marks in the document
           tr.doc.descendants((node, pos) => {
             const commentMark = node.marks.find(
               (mark) =>
                 mark.type.name === this.name &&
-                mark.attrs.commentId === commentId
+                (mark.attrs as CommentAttributes).commentId === commentId
             );
 
             if (commentMark) {
@@ -143,9 +133,10 @@ export const Comment = Mark.create({
                 },
               });
             }
+            return true;
           });
 
-          // 移除所有找到的评论标记
+          // Remove all found comment marks
           commentMarksWithRange.forEach(({ mark, range }) => {
             tr.removeMark(range.from, range.to, mark);
           });
@@ -157,19 +148,15 @@ export const Comment = Mark.create({
           return true;
         },
 
-      /**
-       * 切换评论标记
-       * @param {string} commentId - 评论ID
-       */
       toggleComment:
-        (commentId) =>
+        (commentId: string) =>
         ({ commands, editor }) => {
           if (!commentId) {
             console.error("Comment ID is required");
             return false;
           }
 
-          // 检查当前选区是否已有该评论
+          // Check if current selection already has this comment
           const { from, to } = editor.state.selection;
           let hasComment = false;
 
@@ -177,9 +164,11 @@ export const Comment = Mark.create({
             if (hasComment) return false;
             const mark = node.marks.find(
               (m) =>
-                m.type.name === this.name && m.attrs.commentId === commentId
+                m.type.name === this.name &&
+                (m.attrs as CommentAttributes).commentId === commentId
             );
             if (mark) hasComment = true;
+            return true;
           });
 
           if (hasComment) {
@@ -191,12 +180,9 @@ export const Comment = Mark.create({
     };
   },
 
-  // 添加键盘快捷键
   addKeyboardShortcuts() {
     return {
-      // 可以在这里添加快捷键,例如 Ctrl+Shift+M 添加评论
       "Mod-Shift-m": () => {
-        // 触发添加评论的操作
         const event = new CustomEvent("add-comment-shortcut");
         window.dispatchEvent(event);
         return true;
