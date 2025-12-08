@@ -19,7 +19,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Editor directories
-.vscode/
+.vscode
 .idea/
 *.swp
 *.swo
@@ -32,3 +32,6 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+CLAUDE.md
+.claude/

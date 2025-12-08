@@ -8,7 +8,12 @@
       "mcp__sequential-thinking__sequentialthinking",
       "Bash(npm install:*)",
       "Bash(npm run typecheck:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(pnpm add:*)",
+      "Bash(chmod:*)",
+      "Bash(pnpm list:*)",
+      "Bash(pnpm why:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

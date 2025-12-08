@@ -1,5 +1,5 @@
 import { Mark, mergeAttributes } from "@tiptap/core";
-import { Fragment, Node as ProseMirrorNode, Mark as PMMark } from "@tiptap/pm/model";
+import { Node as ProseMirrorNode, Mark as PMMark } from "@tiptap/pm/model";
 import { diff_match_patch, Diff } from "diff-match-patch";
 import type {
   SuggestionOptions,
@@ -170,7 +170,7 @@ export const Suggestion = Mark.create<SuggestionOptions, SuggestionStorage>({
 
           // 一次性将原始内容替换为带有 diff 标记的内容
           if (nodes.length > 0) {
-            tr.replaceWith(from, to, Fragment.from(nodes));
+            tr.replaceWith(from, to, nodes);
           }
 
           // 将此事务标记为 suggestion 操作

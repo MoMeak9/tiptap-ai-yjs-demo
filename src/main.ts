@@ -184,9 +184,9 @@ const suggestionUI = new SuggestionUI(editor, suggestionManager);
 
 /**
  * Demo function: Apply AI suggestion to selected text
- * This simulates what happens when AI returns a rewritten version of text
+ * Calls real DeepSeek API for text improvement
  */
-function applyAISuggestionDemo(): void {
+async function applyAISuggestionDemo(): Promise<void> {
   const { from, to } = editor.state.selection;
 
   if (from === to) {
@@ -197,63 +197,96 @@ function applyAISuggestionDemo(): void {
   // Get the original selected text
   const originalText = editor.state.doc.textBetween(from, to);
 
-  // Simulate AI response - in real app, this would come from API
-  const aiText = simulateAIRewrite(originalText);
+  // Show loading state
+  const aiButton = document.querySelector('[data-action="aiSuggest"]') as HTMLButtonElement;
+  const originalButtonText = aiButton?.textContent || '';
+  if (aiButton) {
+    aiButton.disabled = true;
+    aiButton.textContent = '⏳ AI Processing...';
+  }
 
-  console.log("Original:", originalText);
-  console.log("AI Suggestion:", aiText);
+  try {
+    // Call real AI API
+    const aiText = await fetchAIRewrite(originalText);
 
-  // Apply the diff
-  const groupId = `g${Date.now()}`;
-  editor.commands.applyAISuggestion(originalText, aiText, from, to, groupId);
+    console.log("Original:", originalText);
+    console.log("AI Suggestion:", aiText);
 
-  // Register the group and show UI
-  suggestionManager.registerGroup(groupId);
-  suggestionUI.show();
+    // Apply the diff
+    const groupId = `g${Date.now()}`;
+    editor.commands.applyAISuggestion(originalText, aiText, from, to, groupId);
+
+    // Register the group and show UI
+    suggestionManager.registerGroup(groupId);
+    suggestionUI.show();
+  } catch (error) {
+    console.error('[AI Suggest] Failed:', error);
+    alert(`AI suggestion failed: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease check:\n1. Server is running (pnpm run server)\n2. DEEPSEEK_API_KEY is configured in server/.env`);
+  } finally {
+    // Restore button state
+    if (aiButton) {
+      aiButton.disabled = false;
+      aiButton.textContent = originalButtonText;
+    }
+  }
 }
 
 /**
- * Simulate AI rewrite - replace with actual API call
+ * Fetch AI rewrite from DeepSeek API via proxy server
  */
-function simulateAIRewrite(text: string): string {
-  // Demo transformations to show diff capabilities
-  const transformations = [
-    // Grammar/style improvements
-    (t: string) => t.replace(/very /gi, "extremely "),
-    (t: string) => t.replace(/good/gi, "excellent"),
-    (t: string) => t.replace(/bad/gi, "poor"),
-    (t: string) => t.replace(/big/gi, "large"),
-    (t: string) => t.replace(/small/gi, "compact"),
-    // Add professional phrases
-    (t: string) => t.replace(/I think/gi, "In my professional opinion"),
-    (t: string) => t.replace(/maybe/gi, "perhaps"),
-    // Expand contractions
-    (t: string) => t.replace(/don't/gi, "do not"),
-    (t: string) => t.replace(/can't/gi, "cannot"),
-    (t: string) => t.replace(/won't/gi, "will not"),
-    // Add some text
-    (t: string) => t + " (AI enhanced)",
-  ];
+async function fetchAIRewrite(text: string): Promise<string> {
+  const API_URL = import.meta.env.VITE_AI_API_URL || 'http://localhost:3001';
 
-  let result = text;
+  try {
+    const response = await fetch(`${API_URL}/api/ai/rewrite`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        content: text,
+        instruction: 'Improve and refine this text professionally, making it more clear, engaging, and well-structured.',
+        format: 'json'
+      })
+    });
 
-  // Apply some random transformations
-  transformations.forEach((transform) => {
-    if (Math.random() > 0.5) {
-      result = transform(result);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `API request failed with status ${response.status}`);
     }
-  });
 
-  // If no changes were made, make at least one change
-  if (result === text) {
-    result = text + " [improved]";
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.error || 'AI rewrite failed');
+    }
+
+    // Extract text from response
+    // For 'json' format: result.data is an array of tokens [{text, marks, markAttrs}]
+    // For 'html' format: result.data is a string
+    let rewrittenText = '';
+
+    if (Array.isArray(result.data)) {
+      // Token array format - join text fields
+      rewrittenText = result.data.map((token: any) => token.text || '').join('');
+    } else if (typeof result.data === 'string') {
+      // HTML format
+      rewrittenText = result.data;
+    } else {
+      throw new Error('Unexpected response format from AI API');
+    }
+
+    if (!rewrittenText || rewrittenText.trim() === text.trim()) {
+      throw new Error('AI returned empty or unchanged text');
+    }
+
+    return rewrittenText;
+  } catch (error) {
+    console.error('[fetchAIRewrite] Error:', error);
+    throw error; // Re-throw to handle in UI
   }
-
-  return result;
 }
 
 // Expose demo function globally for testing
-(window as unknown as { applyAISuggestionDemo: () => void }).applyAISuggestionDemo = applyAISuggestionDemo;
+(window as unknown as { applyAISuggestionDemo: () => Promise<void> }).applyAISuggestionDemo = applyAISuggestionDemo;
 
 // Update character count
 function updateCharacterCount(editorInstance: Editor): void {

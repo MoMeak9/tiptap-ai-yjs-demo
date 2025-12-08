@@ -1,0 +1,219 @@
+{
+  "testCases": [
+    {
+      "id": "tc1",
+      "name": "Simple Text Modification",
+      "description": "Basic text replacement without formatting",
+      "input": {
+        "original": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "Hello World" }
+              ]
+            }
+          ]
+        },
+        "instruction": "Change 'World' to 'Universe'",
+        "outputFormat": "yjs"
+      },
+      "expected": {
+        "operations": [
+          {
+            "type": "delete",
+            "position": 6,
+            "length": 5,
+            "description": "Delete 'World'"
+          },
+          {
+            "type": "insert",
+            "position": 6,
+            "content": "Universe",
+            "description": "Insert 'Universe'"
+          }
+        ]
+      },
+      "validation": {
+        "positionCorrect": true,
+        "lengthCorrect": true,
+        "contentCorrect": true
+      }
+    },
+    {
+      "id": "tc2",
+      "name": "Inline Format Change",
+      "description": "Change text formatting from bold to italic",
+      "input": {
+        "original": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "Hello " },
+                {
+                  "type": "text",
+                  "text": "World",
+                  "marks": [{ "type": "bold" }]
+                }
+              ]
+            }
+          ]
+        },
+        "instruction": "Change 'World' from bold to italic",
+        "outputFormat": "yjs"
+      },
+      "expected": {
+        "operations": [
+          {
+            "type": "formatChange",
+            "from": 6,
+            "to": 11,
+            "removeMark": { "type": "bold" },
+            "addMark": { "type": "italic" },
+            "description": "Change World from bold to italic"
+          }
+        ]
+      },
+      "validation": {
+        "formatChangeDetected": true,
+        "rangeCorrect": true,
+        "marksCorrect": true
+      }
+    },
+    {
+      "id": "tc3",
+      "name": "Block Type Change",
+      "description": "Convert paragraph to heading",
+      "input": {
+        "original": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "Title Text" }
+              ]
+            }
+          ]
+        },
+        "instruction": "Convert this paragraph to a heading level 1",
+        "outputFormat": "yjs"
+      },
+      "expected": {
+        "operations": [
+          {
+            "type": "setBlockType",
+            "from": 0,
+            "to": 10,
+            "blockType": "heading",
+            "attrs": { "level": 1 },
+            "description": "Convert paragraph to heading level 1"
+          }
+        ]
+      },
+      "validation": {
+        "blockTypeCorrect": true,
+        "attrsCorrect": true,
+        "rangeCorrect": true
+      }
+    },
+    {
+      "id": "tc4",
+      "name": "Compound Operation",
+      "description": "Modify both text and formatting",
+      "input": {
+        "original": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "Hello " },
+                {
+                  "type": "text",
+                  "text": "World",
+                  "marks": [{ "type": "bold" }]
+                }
+              ]
+            }
+          ]
+        },
+        "instruction": "Change 'World' to 'Universe' and make it italic instead of bold",
+        "outputFormat": "yjs"
+      },
+      "expected": {
+        "operations": [
+          {
+            "type": "delete",
+            "position": 6,
+            "length": 5,
+            "description": "Delete 'World' (bold)"
+          },
+          {
+            "type": "insert",
+            "position": 6,
+            "content": "Universe",
+            "marks": [{ "type": "italic" }],
+            "description": "Insert 'Universe' (italic)"
+          }
+        ]
+      },
+      "validation": {
+        "compoundOperations": true,
+        "formatPreserved": true,
+        "textCorrect": true
+      }
+    },
+    {
+      "id": "tc5",
+      "name": "Multi-Paragraph Operation",
+      "description": "Merge two paragraphs into one",
+      "input": {
+        "original": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [{ "type": "text", "text": "First paragraph." }]
+            },
+            {
+              "type": "paragraph",
+              "content": [{ "type": "text", "text": "Second paragraph." }]
+            }
+          ]
+        },
+        "instruction": "Combine into one paragraph",
+        "outputFormat": "yjs"
+      },
+      "expected": {
+        "operations": [
+          {
+            "type": "delete",
+            "position": 16,
+            "length": 1,
+            "description": "Delete paragraph break"
+          },
+          {
+            "type": "insert",
+            "position": 16,
+            "content": " ",
+            "description": "Insert space"
+          }
+        ]
+      },
+      "validation": {
+        "crossBlockOperation": true,
+        "mergingCorrect": true
+      }
+    }
+  ],
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-12-08",
+    "purpose": "Phase 1 PoC test cases for DeepSeek Yjs operations",
+    "totalCases": 5
+  }
+}

@@ -1,0 +1,26 @@
+Debugger attached.
+
+> tiptap-comment-extension@1.0.0 server /Users/shiyihui/Desktop/Github/tiptap-ai-yjs-demo
+> tsx server/index.ts
+
+Debugger attached.
+Debugger attached.
+[dotenv@17.2.3] injecting env (5) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+
+🚀 AI Proxy Server started
+   - Local:   http://localhost:3001
+   - Health:  http://localhost:3001/api/health
+   - API Key: ✓ Configured
+
+📡 Endpoints:
+   POST /api/ai/rewrite
+   GET  /api/ai/health
+   GET  /api/health
+
+[2025-12-08T11:47:43.686Z] GET /api/health 200 - 2ms
+[2025-12-08T11:47:43.848Z] GET /api/ai/health 200 - 154ms
+
+👋 SIGTERM received, shutting down gracefully...
+Waiting for the debugger to disconnect...
+Waiting for the debugger to disconnect...
+Waiting for the debugger to disconnect...
