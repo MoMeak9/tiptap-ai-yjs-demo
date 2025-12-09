@@ -45,6 +45,8 @@
         "yjs": "^13.0.0"
     },
     "dependencies": {
+        "@excalidraw/excalidraw": "^0.18.0",
+        "@excalidraw/mermaid-to-excalidraw": "^2.0.0",
         "@lit/task": "^1.0.3",
         "@tiptap/core": "^3.2.0",
         "@tiptap/extension-character-count": "^3.2.0",
@@ -64,6 +66,8 @@
         "express": "^5.2.1",
         "lit": "^3.3.1",
         "mermaid": "10.9.3",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1",
         "y-websocket": "^2.0.4",
         "yjs": "^13.6.20"
     },
@@ -73,6 +77,8 @@
         "@types/dompurify": "^3.2.0",
         "@types/express": "^5.0.6",
         "@types/node": "^22.0.0",
+        "@types/react": "^18.3.27",
+        "@types/react-dom": "^18.3.7",
         "@types/ws": "^8.5.0",
         "concurrently": "^9.2.1",
         "lib0": "^0.2.98",

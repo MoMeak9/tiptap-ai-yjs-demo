@@ -22,6 +22,7 @@
     "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
+    "jsx": "react-jsx",
     "types": ["node"]
   },
   "include": ["src/**/*"],

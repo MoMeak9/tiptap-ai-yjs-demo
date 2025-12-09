@@ -47,8 +47,11 @@ export class OpenMermaidEditorEvent extends CustomEvent<OpenMermaidEditorDetail>
 }
 
 export class MermaidNodeView implements NodeView {
-  /** The outer DOM element (mermaid-viewer custom element) */
-  dom: MermaidViewer;
+  /** The outer DOM element (wrapper div) */
+  dom: HTMLElement;
+
+  /** The mermaid-viewer custom element */
+  private viewer: MermaidViewer;
 
   /** Current ProseMirror node */
   node: ProseMirrorNode;
@@ -62,23 +65,46 @@ export class MermaidNodeView implements NodeView {
   /** Extension configuration */
   extension: any;
 
+  /** Convert to Excalidraw button */
+  private convertButton: HTMLButtonElement | null = null;
+
   constructor({ node, editor, getPos, extension }: MermaidNodeViewProps) {
     this.node = node;
     this.editor = editor;
     this.getPos = getPos;
     this.extension = extension;
 
+    // Create wrapper element
+    this.dom = document.createElement('div');
+    this.dom.className = 'tiptap-mermaid-node-wrapper';
+
     // Create the Lit component instance
-    this.dom = document.createElement('mermaid-viewer') as MermaidViewer;
+    this.viewer = document.createElement('mermaid-viewer') as MermaidViewer;
 
     // Set initial attributes
-    this.dom.code = (node.attrs as MermaidAttributes).code || '';
+    this.viewer.code = (node.attrs as MermaidAttributes).code || '';
 
     // Add wrapper class for styling
-    this.dom.classList.add('tiptap-mermaid-node');
+    this.viewer.classList.add('tiptap-mermaid-node');
+
+    // Create toolbar with convert button
+    const toolbar = document.createElement('div');
+    toolbar.className = 'mermaid-node-toolbar';
+
+    this.convertButton = document.createElement('button');
+    this.convertButton.className = 'mermaid-convert-btn';
+    this.convertButton.innerHTML = '🎨 Convert to Excalidraw';
+    this.convertButton.title = 'Convert this Mermaid diagram to an editable Excalidraw diagram';
+    this.convertButton.addEventListener('click', this.handleConvertToExcalidraw);
+
+    toolbar.appendChild(this.convertButton);
+
+    // Assemble DOM
+    this.dom.appendChild(toolbar);
+    this.dom.appendChild(this.viewer);
 
     // Bind event handlers
-    this.dom.addEventListener('dblclick', this.handleDoubleClick);
+    this.viewer.addEventListener('dblclick', this.handleDoubleClick);
   }
 
   /**
@@ -108,6 +134,76 @@ export class MermaidNodeView implements NodeView {
 
     this.dom.dispatchEvent(event);
   }
+
+  /**
+   * Handle convert to Excalidraw button click
+   */
+  private handleConvertToExcalidraw = async (event: MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const currentCode = (this.node.attrs as MermaidAttributes).code || '';
+    if (!currentCode.trim()) {
+      alert('No Mermaid code to convert');
+      return;
+    }
+
+    // Disable button during conversion
+    if (this.convertButton) {
+      this.convertButton.disabled = true;
+      this.convertButton.textContent = '⏳ Converting...';
+    }
+
+    try {
+      // Dynamic import to avoid loading until needed
+      const { convertMermaidToExcalidraw, getDiagramTypeName } = await import('./excalidraw/mermaidConverter');
+
+      const result = await convertMermaidToExcalidraw(currentCode);
+
+      if (!result.success) {
+        alert(`Conversion failed: ${result.error}`);
+        return;
+      }
+
+      console.log(`[Mermaid→Excalidraw] Converted ${getDiagramTypeName(result.diagramType)} with ${result.elements.length} elements`);
+
+      // Get position and replace mermaid node with excalidraw node
+      const pos = this.getPos();
+      if (typeof pos !== 'number') return;
+
+      // Create transaction to replace this node with excalidraw
+      const { tr, schema } = this.editor.state;
+      const excalidrawNodeType = schema.nodes.excalidraw;
+
+      if (!excalidrawNodeType) {
+        alert('Excalidraw extension is not installed. Please add ExcalidrawExtension to your editor.');
+        return;
+      }
+
+      const nodeId = `excalidraw-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      const excalidrawNode = excalidrawNodeType.create({
+        nodeId,
+        initialElements: JSON.stringify(result.elements),
+        initialFiles: JSON.stringify(result.files),
+        sourceMermaid: currentCode,
+        lastModifiedAt: Date.now(),
+      });
+
+      // Replace the mermaid node with excalidraw node
+      tr.replaceWith(pos, pos + this.node.nodeSize, excalidrawNode);
+      this.editor.view.dispatch(tr);
+
+    } catch (error) {
+      console.error('[Mermaid→Excalidraw] Conversion error:', error);
+      alert(`Conversion failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      // Restore button state
+      if (this.convertButton) {
+        this.convertButton.disabled = false;
+        this.convertButton.innerHTML = '🎨 Convert to Excalidraw';
+      }
+    }
+  };
 
   /**
    * Apply code change to the document via Tiptap transaction
@@ -142,8 +238,8 @@ export class MermaidNodeView implements NodeView {
 
     // Sync code attribute to Lit component
     const newCode = (node.attrs as MermaidAttributes).code || '';
-    if (this.dom.code !== newCode) {
-      this.dom.code = newCode;
+    if (this.viewer.code !== newCode) {
+      this.viewer.code = newCode;
     }
 
     // Return true to indicate we handled the update
@@ -165,7 +261,7 @@ export class MermaidNodeView implements NodeView {
    */
   selectNode() {
     this.dom.classList.add('ProseMirror-selectednode');
-    this.dom.selected = true;
+    this.viewer.selected = true;
   }
 
   /**
@@ -173,7 +269,7 @@ export class MermaidNodeView implements NodeView {
    */
   deselectNode() {
     this.dom.classList.remove('ProseMirror-selectednode');
-    this.dom.selected = false;
+    this.viewer.selected = false;
   }
 
   /**
@@ -191,7 +287,8 @@ export class MermaidNodeView implements NodeView {
    * Cleanup when the node view is destroyed
    */
   destroy() {
-    this.dom.removeEventListener('dblclick', this.handleDoubleClick);
+    this.viewer.removeEventListener('dblclick', this.handleDoubleClick);
+    this.convertButton?.removeEventListener('click', this.handleConvertToExcalidraw);
   }
 }
 

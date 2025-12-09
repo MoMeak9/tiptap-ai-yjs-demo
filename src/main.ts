@@ -25,6 +25,9 @@ import "./extensions/mermaidStyles.css";
 import { getJimengAIService, optimizePromptFromSelection } from "./extensions/jimengAI";
 import { initJimengModal } from "./extensions/jimengModal";
 import "./extensions/jimengStyles.css";
+import { ExcalidrawExtension, ExcalidrawManager, initExcalidrawModal } from "./extensions/excalidraw";
+import "@excalidraw/excalidraw/index.css";
+import "./extensions/excalidraw/excalidrawStyles.css";
 import type { User } from "./types";
 
 // Pre-initialize mermaid at app startup to avoid dynamic import issues
@@ -105,11 +108,21 @@ provider.awareness.setLocalStateField("user", currentUser);
 // Create comment manager
 const commentManager = new CommentManager(ydoc, provider);
 
+// Create Excalidraw manager for collaboration
+const excalidrawManager = new ExcalidrawManager(ydoc, provider, {
+  syncDebounceMs: 100,
+  enableCursorSync: true,
+});
+excalidrawManager.setCurrentUser(currentUser);
+
 // Initialize Mermaid modal (singleton)
 const mermaidModal = initMermaidModal();
 
 // Initialize Jimeng modal (singleton)
 const jimengModal = initJimengModal();
+
+// Initialize Excalidraw modal with collaboration
+const excalidrawModal = initExcalidrawModal(excalidrawManager, true);
 
 // Create editor
 const editor = new Editor({
@@ -161,6 +174,11 @@ const editor = new Editor({
     Mermaid.configure({
       HTMLAttributes: {
         class: "tiptap-mermaid",
+      },
+    }),
+    ExcalidrawExtension.configure({
+      HTMLAttributes: {
+        class: "tiptap-excalidraw",
       },
     }),
   ],
@@ -763,6 +781,8 @@ window.addEventListener("beforeunload", () => {
   commentUI.destroy();
   mermaidModal.destroy();
   jimengModal.destroy();
+  excalidrawModal.destroy();
+  excalidrawManager.destroy();
   provider.destroy();
   editor.destroy();
 });

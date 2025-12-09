@@ -316,5 +316,10 @@ declare module "@tiptap/core" {
       updateMermaid: (pos: number, code: string) => ReturnType;
       deleteMermaid: () => ReturnType;
     };
+    excalidraw: {
+      insertExcalidraw: (elements?: unknown[], files?: Record<string, unknown>) => ReturnType;
+      updateExcalidraw: (pos: number, elements: unknown[], files?: Record<string, unknown>) => ReturnType;
+      deleteExcalidraw: () => ReturnType;
+    };
   }
 }
