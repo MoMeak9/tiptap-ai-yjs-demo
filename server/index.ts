@@ -265,7 +265,9 @@ app.post('/api/ai/jimeng', async (req, res) => {
     }
 
     // Step 2: Generate image using Jimeng
-    console.log(`[Jimeng] Generating image with req_key: ${reqKey || 'high_aes_general_v21_L'}`);
+    // 注意: req_key 需要 "jimeng_" 前缀
+    const finalReqKey = reqKey || 'jimeng_high_aes_general_v21_L';
+    console.log(`[Jimeng] Generating image with req_key: ${finalReqKey}`);
 
     const jimengClient = new JimengClient(
       volcAccessKey,
@@ -274,7 +276,7 @@ app.post('/api/ai/jimeng', async (req, res) => {
     );
 
     const result = await jimengClient.generateImage(optimizedPrompt, {
-      reqKey: reqKey || 'high_aes_general_v21_L',
+      reqKey: finalReqKey,
       width: size?.width || 1024,
       height: size?.height || 1024,
       returnUrl: true,

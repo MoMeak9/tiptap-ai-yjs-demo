@@ -49,7 +49,9 @@ export class JimengClient {
     const startTime = Date.now();
 
     try {
-      const reqKey = options.reqKey || 'high_aes_general_v21_L';
+      // 注意: req_key 需要 "jimeng_" 前缀
+      // 可选值: jimeng_high_aes_general_v21_L, jimeng_high_aes_general_v20, high_aes 等
+      const reqKey = options.reqKey || 'jimeng_high_aes_general_v21_L';
 
       const requestBody: VolcengineCVProcessRequest = {
         req_key: reqKey,

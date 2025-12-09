@@ -231,6 +231,61 @@ export interface MermaidStorage {
   // Reserved for future use (e.g., active mermaid tracking)
 }
 
+// ============================================
+// Jimeng AI Types (AI Image Generation)
+// ============================================
+
+/**
+ * Jimeng AI service options
+ */
+export interface JimengAIOptions {
+  apiUrl?: string;
+  timeout?: number;
+}
+
+/**
+ * Jimeng AI generation result
+ */
+export interface JimengAIResult {
+  success: boolean;
+  imageUrl?: string;
+  imageBase64?: string;
+  optimizedPrompt?: string;
+  error?: string;
+  errorCode?: string;
+  meta?: {
+    model: string;
+    duration: number;
+    promptOptimizationDuration?: number;
+  };
+}
+
+/**
+ * Jimeng prompt optimization result
+ */
+export interface JimengPromptResult {
+  success: boolean;
+  prompt?: string;
+  error?: string;
+}
+
+/**
+ * Jimeng modal result (from user interaction)
+ */
+export interface JimengModalResult {
+  action: 'confirm' | 'cancel';
+  prompt?: string;
+}
+
+/**
+ * Jimeng modal interface
+ */
+export interface IJimengModal {
+  open(originalText: string, optimizedPrompt: string): Promise<JimengModalResult>;
+  close(): void;
+  destroy(): void;
+}
+
 /**
  * Declare module augmentation for Editor commands
  */

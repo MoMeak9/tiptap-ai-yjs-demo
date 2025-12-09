@@ -1,0 +1,257 @@
+/**
+ * Jimeng AI Modal Styles
+ */
+
+/* Modal Overlay */
+.jimeng-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  backdrop-filter: blur(2px);
+}
+
+/* Modal Container */
+.jimeng-modal {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: jimeng-modal-appear 0.2s ease-out;
+}
+
+@keyframes jimeng-modal-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Modal Header */
+.jimeng-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.jimeng-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.jimeng-modal-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 20px;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.jimeng-modal-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Modal Body */
+.jimeng-modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Field Container */
+.jimeng-field {
+  margin-bottom: 16px;
+}
+
+.jimeng-field label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+/* Original Text Display */
+.jimeng-original-text {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.6;
+  max-height: 100px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Prompt Textarea */
+.jimeng-prompt-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #1f2937;
+  resize: vertical;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  font-family: inherit;
+}
+
+.jimeng-prompt-textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.jimeng-prompt-textarea::placeholder {
+  color: #9ca3af;
+}
+
+/* Hint Text */
+.jimeng-hint {
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 13px;
+  color: #92400e;
+  line-height: 1.5;
+}
+
+/* Modal Footer */
+.jimeng-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+/* Buttons */
+.jimeng-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.jimeng-btn-cancel {
+  background: #fff;
+  border: 1px solid #d1d5db;
+  color: #374151;
+}
+
+.jimeng-btn-cancel:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.jimeng-btn-confirm {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.jimeng-btn-confirm:hover {
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  transform: translateY(-1px);
+}
+
+.jimeng-btn-confirm:active {
+  transform: translateY(0);
+}
+
+.jimeng-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Loading state for the confirm button */
+.jimeng-btn-confirm.is-loading {
+  pointer-events: none;
+  position: relative;
+}
+
+.jimeng-btn-confirm.is-loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: jimeng-spin 0.8s linear infinite;
+  margin-left: 8px;
+}
+
+@keyframes jimeng-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .jimeng-modal {
+    width: 95%;
+    max-height: 95vh;
+  }
+
+  .jimeng-modal-header {
+    padding: 14px 16px;
+  }
+
+  .jimeng-modal-header h3 {
+    font-size: 16px;
+  }
+
+  .jimeng-modal-body {
+    padding: 16px;
+  }
+
+  .jimeng-modal-footer {
+    padding: 14px 16px;
+  }
+
+  .jimeng-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+}

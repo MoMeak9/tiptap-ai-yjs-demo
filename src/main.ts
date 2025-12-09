@@ -22,6 +22,9 @@ import { Mermaid } from "./extensions/mermaid";
 import { initMermaidModal } from "./extensions/mermaidModal";
 import { generateMermaidFromSelection } from "./extensions/mermaidAI";
 import "./extensions/mermaidStyles.css";
+import { getJimengAIService, optimizePromptFromSelection } from "./extensions/jimengAI";
+import { initJimengModal } from "./extensions/jimengModal";
+import "./extensions/jimengStyles.css";
 import type { User } from "./types";
 
 // Pre-initialize mermaid at app startup to avoid dynamic import issues
@@ -104,6 +107,9 @@ const commentManager = new CommentManager(ydoc, provider);
 
 // Initialize Mermaid modal (singleton)
 const mermaidModal = initMermaidModal();
+
+// Initialize Jimeng modal (singleton)
+const jimengModal = initJimengModal();
 
 // Create editor
 const editor = new Editor({
@@ -400,6 +406,131 @@ async function generateMermaidDiagram(): Promise<void> {
 // Expose for testing
 (window as unknown as { generateMermaidDiagram: () => Promise<void> }).generateMermaidDiagram = generateMermaidDiagram;
 
+/**
+ * Generate image from selected text using Jimeng AI
+ * Two-step workflow: optimize prompt → user edit → generate image
+ */
+async function generateJimengImage(): Promise<void> {
+  const { from, to } = editor.state.selection;
+
+  // Check if there's a selection
+  if (from === to) {
+    alert("请先选中要生成图片的文本内容");
+    return;
+  }
+
+  // Get button reference for loading state
+  const jimengButton = document.querySelector('[data-action="jimeng"]') as HTMLButtonElement;
+  const originalButtonText = jimengButton?.textContent || '';
+
+  // Show loading state on button
+  if (jimengButton) {
+    jimengButton.disabled = true;
+    jimengButton.textContent = '⏳ 优化提示词...';
+  }
+
+  // Show processing animation on selected text
+  editor.commands.setProcessing(from, to);
+
+  try {
+    // Step 1: Optimize prompt from selection
+    const promptResult = await optimizePromptFromSelection(editor);
+
+    if (!promptResult.success || !promptResult.prompt) {
+      editor.commands.clearProcessing();
+      alert(`提示词优化失败: ${promptResult.error}`);
+      return;
+    }
+
+    // Clear processing animation before showing modal
+    editor.commands.clearProcessing();
+
+    // Restore button for modal interaction
+    if (jimengButton) {
+      jimengButton.disabled = false;
+      jimengButton.textContent = originalButtonText;
+    }
+
+    // Step 2: Show modal for user to review/edit prompt
+    const modalResult = await jimengModal.open(
+      promptResult.context?.selectedText || '',
+      promptResult.prompt
+    );
+
+    if (modalResult.action === 'cancel') {
+      console.log('[Jimeng] User cancelled image generation');
+      return;
+    }
+
+    // Step 3: Generate image with the final prompt
+    // Show loading state again
+    if (jimengButton) {
+      jimengButton.disabled = true;
+      jimengButton.textContent = '⏳ 生成图片...';
+    }
+
+    // Show processing animation again
+    editor.commands.setProcessing(from, to);
+
+    const service = getJimengAIService();
+    const result = await service.generateImage(modalResult.prompt!);
+
+    // Clear processing animation
+    editor.commands.clearProcessing();
+
+    if (!result.success) {
+      alert(`图片生成失败: ${result.error}`);
+      return;
+    }
+
+    // Step 4: Insert image after the selected text
+    const imageUrl = result.imageUrl || (result.imageBase64 ? `data:image/png;base64,${result.imageBase64}` : null);
+
+    if (!imageUrl) {
+      alert('图片生成失败: 未返回有效的图片数据');
+      return;
+    }
+
+    console.log('[Jimeng] Image generated successfully:', {
+      hasUrl: !!result.imageUrl,
+      hasBase64: !!result.imageBase64,
+      duration: result.meta?.duration,
+    });
+
+    // Insert the image after the selection
+    editor
+      .chain()
+      .focus()
+      .setTextSelection(to)
+      .insertContent([
+        { type: 'paragraph' }, // Add a line break before the image
+        {
+          type: 'image',
+          attrs: {
+            src: imageUrl,
+            alt: modalResult.prompt?.substring(0, 100) || 'AI Generated Image',
+          },
+        },
+      ])
+      .run();
+
+  } catch (error) {
+    console.error('[Jimeng] Error:', error);
+    // Clear processing animation on error
+    editor.commands.clearProcessing();
+    alert(`图片生成失败: ${error instanceof Error ? error.message : '未知错误'}\n\n请检查:\n1. 服务器是否运行 (pnpm run server)\n2. VOLC_ACCESSKEY 和 VOLC_SECRETKEY 是否已配置`);
+  } finally {
+    // Restore button state
+    if (jimengButton) {
+      jimengButton.disabled = false;
+      jimengButton.textContent = originalButtonText;
+    }
+  }
+}
+
+// Expose for testing
+(window as unknown as { generateJimengImage: () => Promise<void> }).generateJimengImage = generateJimengImage;
+
 // Update character count
 function updateCharacterCount(editorInstance: Editor): void {
   const storage = editorInstance.storage.characterCount as {
@@ -488,6 +619,9 @@ if (toolbar) {
         break;
       case "mermaid":
         generateMermaidDiagram();
+        break;
+      case "jimeng":
+        generateJimengImage();
         break;
     }
 
@@ -628,6 +762,7 @@ window.addEventListener("beforeunload", () => {
   commentManager.destroy();
   commentUI.destroy();
   mermaidModal.destroy();
+  jimengModal.destroy();
   provider.destroy();
   editor.destroy();
 });
