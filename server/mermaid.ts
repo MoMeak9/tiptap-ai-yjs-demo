@@ -12,7 +12,7 @@ import type {
   MermaidGenerateRequest,
   MermaidGenerateResponse,
   DeepSeekResponse,
-} from './types';
+} from "./types";
 
 // System prompt with Chain-of-Thought strategy
 const MERMAID_SYSTEM_PROMPT = `You are a Senior System Architect and Mermaid.js Expert.
@@ -30,7 +30,6 @@ Translate the provided technical text into a valid Mermaid.js diagram.
    - erDiagram: For database entity relationships
    - gantt: For project timelines and schedules
    - pie: For proportional data
-   - mindmap: For hierarchical concepts
 3. **Code Generation**: Output the Mermaid code.
 
 ## Syntax Constraints (CRITICAL)
@@ -47,7 +46,7 @@ Translate the provided technical text into a valid Mermaid.js diagram.
 ## Output Format (JSON)
 {
   "analysis": "Brief analysis of entities and relationships found",
-  "diagram_type": "flowchart|sequence|classDiagram|stateDiagram-v2|erDiagram|gantt|pie|mindmap",
+  "diagram_type": "flowchart|sequence|classDiagram|stateDiagram-v2|erDiagram|gantt|pie",
   "mermaid_code": "The pure Mermaid.js code without markdown backticks",
   "title": "A concise title for the diagram"
 }
@@ -105,11 +104,11 @@ Return ONLY valid JSON.`;
 
 export class MermaidGenerator {
   private apiKey: string;
-  private baseUrl = 'https://api.deepseek.com/v1';
+  private baseUrl = "https://api.deepseek.com/v1";
 
   constructor(apiKey: string) {
     if (!apiKey) {
-      throw new Error('DeepSeek API key is required');
+      throw new Error("DeepSeek API key is required");
     }
     this.apiKey = apiKey;
   }
@@ -117,7 +116,9 @@ export class MermaidGenerator {
   /**
    * Generate Mermaid diagram from context
    */
-  async generate(request: MermaidGenerateRequest): Promise<MermaidGenerateResponse> {
+  async generate(
+    request: MermaidGenerateRequest
+  ): Promise<MermaidGenerateResponse> {
     const startTime = Date.now();
 
     try {
@@ -125,7 +126,10 @@ export class MermaidGenerator {
       const userPrompt = this.buildPrompt(request);
 
       // Call DeepSeek API
-      const response = await this.callDeepSeek(MERMAID_SYSTEM_PROMPT, userPrompt);
+      const response = await this.callDeepSeek(
+        MERMAID_SYSTEM_PROMPT,
+        userPrompt
+      );
 
       // Parse the response
       const parsed = this.parseResponse(response);
@@ -144,17 +148,17 @@ export class MermaidGenerator {
           repairAttempts: validated.attempts,
         },
         meta: {
-          model: 'deepseek-chat',
+          model: "deepseek-chat",
           duration: Date.now() - startTime,
         },
       };
     } catch (error) {
-      console.error('[MermaidGenerator] Error:', error);
+      console.error("[MermaidGenerator] Error:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
         meta: {
-          model: 'deepseek-chat',
+          model: "deepseek-chat",
           duration: Date.now() - startTime,
         },
       };
@@ -169,7 +173,9 @@ export class MermaidGenerator {
 
     // Document structure context
     if (request.documentOutline && request.documentOutline.length > 0) {
-      parts.push(`## Document Structure\n${request.documentOutline.join('\n')}`);
+      parts.push(
+        `## Document Structure\n${request.documentOutline.join("\n")}`
+      );
     }
 
     // Surrounding context
@@ -178,7 +184,9 @@ export class MermaidGenerator {
     }
 
     // Main selected text (most important)
-    parts.push(`## Selected Text (Generate diagram for this)\n${request.selectedText}`);
+    parts.push(
+      `## Selected Text (Generate diagram for this)\n${request.selectedText}`
+    );
 
     // Context after
     if (request.contextAfter) {
@@ -190,24 +198,27 @@ export class MermaidGenerator {
       parts.push(`## Additional Instruction\n${request.userInstruction}`);
     }
 
-    return parts.join('\n\n');
+    return parts.join("\n\n");
   }
 
   /**
    * Call DeepSeek API
    */
-  private async callDeepSeek(systemPrompt: string, userPrompt: string): Promise<string> {
+  private async callDeepSeek(
+    systemPrompt: string,
+    userPrompt: string
+  ): Promise<string> {
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: "deepseek-chat",
         messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
         ],
         temperature: 0.3,
         max_tokens: 2000,
@@ -223,7 +234,7 @@ export class MermaidGenerator {
     const content = data.choices[0]?.message?.content;
 
     if (!content) {
-      throw new Error('Empty response from DeepSeek');
+      throw new Error("Empty response from DeepSeek");
     }
 
     return content;
@@ -246,18 +257,18 @@ export class MermaidGenerator {
       const parsed = JSON.parse(jsonStr.trim());
 
       if (!parsed.mermaid_code) {
-        throw new Error('Missing mermaid_code in response');
+        throw new Error("Missing mermaid_code in response");
       }
 
       return {
-        analysis: parsed.analysis || '',
-        diagram_type: parsed.diagram_type || 'flowchart',
+        analysis: parsed.analysis || "",
+        diagram_type: parsed.diagram_type || "flowchart",
         mermaid_code: parsed.mermaid_code,
-        title: parsed.title || 'Diagram',
+        title: parsed.title || "Diagram",
       };
     } catch (e) {
-      console.error('[MermaidGenerator] Parse error:', e);
-      console.error('[MermaidGenerator] Raw content:', content);
+      console.error("[MermaidGenerator] Parse error:", e);
+      console.error("[MermaidGenerator] Raw content:", content);
       throw new Error(`Failed to parse AI response: ${e}`);
     }
   }
@@ -283,19 +294,30 @@ export class MermaidGenerator {
     // Try to repair
     while (attempts < maxAttempts && validationErrors.length > 0) {
       attempts++;
-      console.log(`[MermaidGenerator] Repair attempt ${attempts}/${maxAttempts}`);
+      console.log(
+        `[MermaidGenerator] Repair attempt ${attempts}/${maxAttempts}`
+      );
 
       try {
-        const repairPrompt = `## Original Code\n\`\`\`\n${currentCode}\n\`\`\`\n\n## Errors Found\n${validationErrors.join('\n')}\n\nPlease fix the code.`;
+        const repairPrompt = `## Original Code\n\`\`\`\n${currentCode}\n\`\`\`\n\n## Errors Found\n${validationErrors.join(
+          "\n"
+        )}\n\nPlease fix the code.`;
 
-        const repairResponse = await this.callDeepSeek(MERMAID_REPAIR_PROMPT, repairPrompt);
+        const repairResponse = await this.callDeepSeek(
+          MERMAID_REPAIR_PROMPT,
+          repairPrompt
+        );
         const repairParsed = JSON.parse(
-          repairResponse.match(/```(?:json)?\s*([\s\S]*?)\s*```/)?.[1] || repairResponse
+          repairResponse.match(/```(?:json)?\s*([\s\S]*?)\s*```/)?.[1] ||
+            repairResponse
         );
 
         if (repairParsed.fixed_code) {
           currentCode = repairParsed.fixed_code;
-          console.log(`[MermaidGenerator] Fixes applied:`, repairParsed.fixes_applied);
+          console.log(
+            `[MermaidGenerator] Fixes applied:`,
+            repairParsed.fixes_applied
+          );
 
           // Re-validate
           const newErrors = this.basicValidation(currentCode);
@@ -306,7 +328,7 @@ export class MermaidGenerator {
           validationErrors.push(...newErrors);
         }
       } catch (repairError) {
-        console.warn('[MermaidGenerator] Repair failed:', repairError);
+        console.warn("[MermaidGenerator] Repair failed:", repairError);
       }
     }
 
@@ -331,33 +353,45 @@ export class MermaidGenerator {
     }
 
     // Check for reserved words as IDs
-    const reservedWords = ['end', 'graph', 'subgraph', 'direction', 'click', 'style', 'classDef'];
-    const lines = code.split('\n');
+    const reservedWords = [
+      "end",
+      "graph",
+      "subgraph",
+      "direction",
+      "click",
+      "style",
+      "classDef",
+    ];
+    const lines = code.split("\n");
     for (const line of lines) {
       for (const word of reservedWords) {
         // Check if reserved word is used as a node ID (not as keyword)
-        const pattern = new RegExp(`^\\s*${word}\\s*[\\[\\(\\{]|-->\\s*${word}\\s*[\\[\\(\\{]`, 'i');
+        const pattern = new RegExp(
+          `^\\s*${word}\\s*[\\[\\(\\{]|-->\\s*${word}\\s*[\\[\\(\\{]`,
+          "i"
+        );
         if (pattern.test(line)) {
-          errors.push(`Reserved word '${word}' used as node ID in: ${line.trim()}`);
+          errors.push(
+            `Reserved word '${word}' used as node ID in: ${line.trim()}`
+          );
         }
       }
     }
 
     // Check for missing diagram type declaration
-    const firstLine = code.trim().split('\n')[0].toLowerCase();
+    const firstLine = code.trim().split("\n")[0].toLowerCase();
     const validStarts = [
-      'graph',
-      'flowchart',
-      'sequencediagram',
-      'classdiagram',
-      'statediagram',
-      'erdiagram',
-      'gantt',
-      'pie',
-      'mindmap',
+      "graph",
+      "flowchart",
+      "sequencediagram",
+      "classdiagram",
+      "statediagram",
+      "erdiagram",
+      "gantt",
+      "pie",
     ];
     if (!validStarts.some((start) => firstLine.startsWith(start))) {
-      errors.push('Missing or invalid diagram type declaration');
+      errors.push("Missing or invalid diagram type declaration");
     }
 
     return errors;
