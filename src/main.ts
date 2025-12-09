@@ -20,6 +20,7 @@ import { SuggestionUI } from "./extensions/suggestionUI";
 import { ProcessingDecoration } from "./extensions/processingDecoration";
 import { Mermaid } from "./extensions/mermaid";
 import { initMermaidModal } from "./extensions/mermaidModal";
+import { generateMermaidFromSelection } from "./extensions/mermaidAI";
 import "./extensions/mermaidStyles.css";
 import type { User } from "./types";
 
@@ -318,6 +319,87 @@ async function fetchAIRewrite(text: string): Promise<string> {
 // Expose demo function globally for testing
 (window as unknown as { applyAISuggestionDemo: () => Promise<void> }).applyAISuggestionDemo = applyAISuggestionDemo;
 
+/**
+ * Generate Mermaid diagram from selected text using AI
+ * Requires text selection - will alert if nothing is selected
+ */
+async function generateMermaidDiagram(): Promise<void> {
+  const { from, to } = editor.state.selection;
+
+  // Check if there's a selection
+  if (from === to) {
+    alert("请先选中要生成图表的文本内容");
+    return;
+  }
+
+  // Get button reference for loading state
+  const mermaidButton = document.querySelector('[data-action="mermaid"]') as HTMLButtonElement;
+  const originalButtonText = mermaidButton?.textContent || '';
+
+  // Show loading state
+  if (mermaidButton) {
+    mermaidButton.disabled = true;
+    mermaidButton.textContent = '⏳ AI 生成中...';
+  }
+
+  // Show processing animation on selected text
+  editor.commands.setProcessing(from, to);
+
+  try {
+    // Call AI service
+    const result = await generateMermaidFromSelection(editor);
+
+    // Clear processing animation
+    editor.commands.clearProcessing();
+
+    if (!result.success) {
+      alert(`图表生成失败: ${result.error}`);
+      return;
+    }
+
+    if (!result.mermaidCode) {
+      alert("AI 未能生成有效的图表代码");
+      return;
+    }
+
+    console.log("[Mermaid AI] Generated diagram:", {
+      type: result.diagramType,
+      title: result.title,
+      wasRepaired: result.wasRepaired,
+      analysis: result.analysis,
+    });
+
+    // Insert the generated Mermaid diagram after the selected content
+    // Move cursor to end of selection, then insert diagram
+    const { to } = editor.state.selection;
+    editor
+      .chain()
+      .focus()
+      .setTextSelection(to)
+      .insertMermaid(result.mermaidCode)
+      .run();
+
+    // Show warning if there was a validation issue
+    if (result.error) {
+      console.warn("[Mermaid AI]", result.error);
+    }
+  } catch (error) {
+    console.error("[Mermaid AI] Error:", error);
+    // Clear processing animation on error
+    editor.commands.clearProcessing();
+    alert(`图表生成失败: ${error instanceof Error ? error.message : '未知错误'}\n\n请检查:\n1. 服务器是否运行 (pnpm run server)\n2. DEEPSEEK_API_KEY 是否已配置`);
+  } finally {
+    // Restore button state
+    if (mermaidButton) {
+      mermaidButton.disabled = false;
+      mermaidButton.textContent = originalButtonText;
+    }
+  }
+}
+
+// Expose for testing
+(window as unknown as { generateMermaidDiagram: () => Promise<void> }).generateMermaidDiagram = generateMermaidDiagram;
+
 // Update character count
 function updateCharacterCount(editorInstance: Editor): void {
   const storage = editorInstance.storage.characterCount as {
@@ -405,7 +487,7 @@ if (toolbar) {
         applyAISuggestionDemo();
         break;
       case "mermaid":
-        editor.chain().focus().insertMermaid().run();
+        generateMermaidDiagram();
         break;
     }
 

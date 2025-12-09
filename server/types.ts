@@ -174,3 +174,146 @@ export interface DashScopeTextToImageRequest {
     seed?: number;
   };
 }
+
+// ============================================
+// Volcengine Jimeng (即梦AI) Text-to-Image API
+// ============================================
+
+/**
+ * Jimeng text-to-image request payload (from frontend)
+ */
+export interface JimengTextToImageRequest {
+  /** The text to generate image from (will be used as context for prompt optimization) */
+  selectedText: string;
+  /** Context before selected text (for better prompt generation) */
+  contextBefore?: string;
+  /** Context after selected text (for better prompt generation) */
+  contextAfter?: string;
+  /** Image size */
+  size?: {
+    width: number;
+    height: number;
+  };
+  /** Model version key */
+  reqKey?:
+    | 'high_aes_general_v21_L'
+    | 'high_aes_general_v20'
+    | 'high_aes_general_v14'
+    | 'general_v2.0_L'
+    | 'high_aes'
+    | 'jimeng_high_aes_general_v21'
+    | string;
+  /** Whether to skip prompt optimization */
+  skipPromptOptimization?: boolean;
+}
+
+/**
+ * Jimeng text-to-image response
+ */
+export interface JimengTextToImageResponse {
+  success: boolean;
+  data?: {
+    /** Generated image URL or base64 data */
+    imageUrl?: string;
+    imageBase64?: string;
+    /** The optimized prompt used for generation */
+    optimizedPrompt?: string;
+  };
+  meta?: {
+    model: string;
+    duration: number;
+    promptOptimizationDuration?: number;
+  };
+  error?: string;
+  /** Error code for content safety filtering */
+  errorCode?: string;
+}
+
+/**
+ * Volcengine CVProcess request body for Jimeng
+ */
+export interface VolcengineCVProcessRequest {
+  req_key: string;
+  prompt: string;
+  model_version?: string;
+  seed?: number;
+  scale?: number;
+  ddim_steps?: number;
+  width?: number;
+  height?: number;
+  use_sr?: boolean;
+  return_url?: boolean;
+  logo_info?: {
+    add_logo: boolean;
+    position?: number;
+    language?: number;
+    opacity?: number;
+  };
+}
+
+/**
+ * Volcengine CVProcess response
+ */
+export interface VolcengineCVProcessResponse {
+  code: number;
+  message: string;
+  request_id: string;
+  time_elapsed: string;
+  data?: {
+    /** Base64 encoded image data */
+    binary_data_base64?: string[];
+    /** Image URLs (if return_url is true) */
+    image_urls?: string[];
+    /** Algorithm base response */
+    algorithm_base_resp?: {
+      status_code: number;
+      status_message: string;
+    };
+  };
+}
+
+// ============================================
+// Mermaid AI Generation API
+// ============================================
+
+/**
+ * Mermaid generation request payload (from frontend)
+ */
+export interface MermaidGenerateRequest {
+  /** The selected text to generate diagram from */
+  selectedText: string;
+  /** Context before selected text (surrounding paragraphs) */
+  contextBefore?: string;
+  /** Context after selected text (surrounding paragraphs) */
+  contextAfter?: string;
+  /** Document outline/headings for structural context */
+  documentOutline?: string[];
+  /** Optional user instruction to guide diagram generation */
+  userInstruction?: string;
+}
+
+/**
+ * Mermaid generation response
+ */
+export interface MermaidGenerateResponse {
+  success: boolean;
+  data?: {
+    /** Generated Mermaid code */
+    mermaidCode: string;
+    /** Detected diagram type */
+    diagramType: string;
+    /** Generated title for the diagram */
+    title: string;
+    /** AI analysis of the content */
+    analysis: string;
+    /** Whether the code was repaired */
+    wasRepaired: boolean;
+    /** Number of repair attempts */
+    repairAttempts: number;
+  };
+  meta?: {
+    model: string;
+    duration: number;
+  };
+  error?: string;
+}
