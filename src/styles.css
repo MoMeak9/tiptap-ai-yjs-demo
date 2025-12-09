@@ -693,6 +693,45 @@ footer code {
 }
 
 /* ============================================ */
+/* AI Processing Animation                      */
+/* ============================================ */
+
+/* Processing state - animated wave underline */
+.ai-processing {
+  position: relative;
+}
+
+.ai-processing::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    #3b82f6 20%,
+    #60a5fa 40%,
+    #93c5fd 60%,
+    #60a5fa 80%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: ai-processing-wave 1.2s ease-in-out infinite;
+  border-radius: 2px;
+}
+
+@keyframes ai-processing-wave {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+/* ============================================ */
 /* AI Suggestion Styles                         */
 /* ============================================ */
 

@@ -100,3 +100,77 @@ export interface DeepSeekResponse {
     total_tokens: number;
   };
 }
+
+// ============================================
+// Alibaba Bailian (DashScope) Text-to-Image API
+// ============================================
+
+/**
+ * Text-to-image request payload
+ */
+export interface TextToImageRequest {
+  prompt: string;
+  negativePrompt?: string;
+  size?: '1024*1024' | '720*1280' | '1280*720';
+  n?: number;
+  model?: 'wanx2.1-t2i-turbo' | 'wanx2.1-t2i-plus' | 'wanx2.0-t2i-turbo';
+}
+
+/**
+ * Text-to-image response
+ */
+export interface TextToImageResponse {
+  success: boolean;
+  data?: {
+    taskId: string;
+    images: Array<{
+      url: string;
+    }>;
+  };
+  meta?: {
+    model: string;
+    duration: number;
+    imageCount: number;
+  };
+  error?: string;
+}
+
+/**
+ * DashScope task creation response
+ */
+export interface DashScopeTaskResponse {
+  request_id: string;
+  output: {
+    task_id: string;
+    task_status: 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED';
+    results?: Array<{
+      url: string;
+    }>;
+    task_metrics?: {
+      TOTAL: number;
+      SUCCEEDED: number;
+      FAILED: number;
+    };
+    message?: string;
+    code?: string;
+  };
+  usage?: {
+    image_count: number;
+  };
+}
+
+/**
+ * DashScope text-to-image request body
+ */
+export interface DashScopeTextToImageRequest {
+  model: string;
+  input: {
+    prompt: string;
+    negative_prompt?: string;
+  };
+  parameters?: {
+    size?: string;
+    n?: number;
+    seed?: number;
+  };
+}

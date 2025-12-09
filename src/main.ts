@@ -17,6 +17,7 @@ import { CommentUI } from "./extensions/commentUI";
 import { Suggestion } from "./extensions/suggestion";
 import { SuggestionManager } from "./extensions/suggestionManager";
 import { SuggestionUI } from "./extensions/suggestionUI";
+import { ProcessingDecoration } from "./extensions/processingDecoration";
 import type { User } from "./types";
 
 // Random color generator
@@ -134,6 +135,7 @@ const editor = new Editor({
         console.log("Suggestion activated:", diffId);
       },
     }),
+    ProcessingDecoration,
   ],
   content: "",
   onUpdate: ({ editor }) => {
@@ -205,12 +207,18 @@ async function applyAISuggestionDemo(): Promise<void> {
     aiButton.textContent = '⏳ AI Processing...';
   }
 
+  // Show processing animation on the selected paragraphs
+  editor.commands.setProcessing(from, to);
+
   try {
     // Call real AI API
     const aiText = await fetchAIRewrite(originalText);
 
     console.log("Original:", originalText);
     console.log("AI Suggestion:", aiText);
+
+    // Clear processing animation before applying diff
+    editor.commands.clearProcessing();
 
     // Apply the diff
     const groupId = `g${Date.now()}`;
@@ -221,6 +229,8 @@ async function applyAISuggestionDemo(): Promise<void> {
     suggestionUI.show();
   } catch (error) {
     console.error('[AI Suggest] Failed:', error);
+    // Clear processing animation on error
+    editor.commands.clearProcessing();
     alert(`AI suggestion failed: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease check:\n1. Server is running (pnpm run server)\n2. DEEPSEEK_API_KEY is configured in server/.env`);
   } finally {
     // Restore button state

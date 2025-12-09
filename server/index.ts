@@ -2,7 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import { config } from 'dotenv';
 import { DeepSeekClient } from './deepseek';
-import type { AIRewriteRequest } from './types';
+import { BailianClient } from './bailian';
+import type { AIRewriteRequest, TextToImageRequest } from './types';
 
 // Load environment variables
 config();
@@ -98,6 +99,85 @@ app.post('/api/ai/rewrite', async (req, res) => {
   }
 });
 
+// AI text-to-image endpoint (Alibaba Bailian / DashScope)
+app.post('/api/ai/text-to-image', async (req, res) => {
+  try {
+    const { prompt, negativePrompt, size, n, model } = req.body as TextToImageRequest;
+
+    // Validation
+    if (!prompt) {
+      return res.status(400).json({
+        success: false,
+        error: 'Prompt is required',
+      });
+    }
+
+    // Check API key
+    const apiKey = process.env.DASHSCOPE_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({
+        success: false,
+        error: 'DASHSCOPE_API_KEY not configured',
+      });
+    }
+
+    // Call Bailian (DashScope)
+    console.log(
+      `[AI Text-to-Image] Prompt: ${prompt.substring(0, 50)}..., Model: ${model || 'wanx2.1-t2i-turbo'}`
+    );
+
+    const client = new BailianClient(apiKey);
+    const result = await client.textToImage(prompt, {
+      negativePrompt,
+      size,
+      n,
+      model,
+    });
+
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+
+    console.log(
+      `[AI Text-to-Image] Success - Duration: ${result.meta?.duration}ms, Images: ${result.meta?.imageCount}`
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('[AI Text-to-Image] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// Bailian (DashScope) health check endpoint
+app.get('/api/ai/text-to-image/health', async (req, res) => {
+  try {
+    const apiKey = process.env.DASHSCOPE_API_KEY;
+    if (!apiKey) {
+      return res.json({
+        healthy: false,
+        error: 'DASHSCOPE_API_KEY not configured',
+      });
+    }
+
+    const client = new BailianClient(apiKey);
+    const healthy = await client.health();
+
+    res.json({
+      healthy,
+      timestamp: Date.now(),
+    });
+  } catch (error) {
+    res.json({
+      healthy: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
 // DeepSeek health check endpoint
 app.get('/api/ai/health', async (req, res) => {
   try {
@@ -153,11 +233,15 @@ app.listen(PORT, () => {
   console.log(`\n🚀 AI Proxy Server started`);
   console.log(`   - Local:   http://localhost:${PORT}`);
   console.log(`   - Health:  http://localhost:${PORT}/api/health`);
-  console.log(`   - API Key: ${process.env.DEEPSEEK_API_KEY ? '✓ Configured' : '✗ Missing'}`);
+  console.log(`\n🔑 API Keys:`);
+  console.log(`   - DeepSeek:   ${process.env.DEEPSEEK_API_KEY ? '✓ Configured' : '✗ Missing'}`);
+  console.log(`   - DashScope:  ${process.env.DASHSCOPE_API_KEY ? '✓ Configured' : '✗ Missing'}`);
   console.log(`\n📡 Endpoints:`);
-  console.log(`   POST /api/ai/rewrite`);
-  console.log(`   GET  /api/ai/health`);
-  console.log(`   GET  /api/health\n`);
+  console.log(`   POST /api/ai/rewrite          - Text rewriting (DeepSeek)`);
+  console.log(`   POST /api/ai/text-to-image    - Text to image (Bailian/DashScope)`);
+  console.log(`   GET  /api/ai/health           - DeepSeek health check`);
+  console.log(`   GET  /api/ai/text-to-image/health - DashScope health check`);
+  console.log(`   GET  /api/health              - Server health check\n`);
 });
 
 // Graceful shutdown

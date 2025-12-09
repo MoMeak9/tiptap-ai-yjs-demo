@@ -8,6 +8,10 @@ export { Suggestion } from "./extensions/suggestion";
 export { SuggestionManager } from "./extensions/suggestionManager";
 export { SuggestionUI } from "./extensions/suggestionUI";
 
+// Core extensions - AI Processing Animation
+export { ProcessingDecoration, processingPluginKey } from "./extensions/processingDecoration";
+export type { ProcessingState } from "./extensions/processingDecoration";
+
 // Types - Comments
 export type {
   User,

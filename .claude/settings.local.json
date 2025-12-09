@@ -13,7 +13,9 @@
       "Bash(chmod:*)",
       "Bash(pnpm list:*)",
       "Bash(pnpm why:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "WebSearch",
+      "WebFetch(domain:help.aliyun.com)"
     ],
     "deny": [],
     "ask": []
