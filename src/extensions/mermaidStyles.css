@@ -1,0 +1,374 @@
+/**
+ * Mermaid Extension Styles
+ *
+ * Light DOM styles using BEM naming convention to avoid conflicts.
+ * Supports both the mermaid-viewer component and the edit modal.
+ */
+
+/* ============================================
+   Mermaid Viewer Component
+   ============================================ */
+
+mermaid-viewer {
+  display: block;
+  margin: 1rem 0;
+  border-radius: 8px;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+/* Selected state in editor */
+mermaid-viewer.ProseMirror-selectednode,
+mermaid-viewer[selected] {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Wrapper class for Tiptap integration */
+.tiptap-mermaid-node {
+  cursor: pointer;
+  position: relative;
+}
+
+.tiptap-mermaid-node:hover::after {
+  content: 'Double-click to edit';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  font-size: 12px;
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.tiptap-mermaid-node:hover::after {
+  opacity: 1;
+}
+
+/* Container for rendered SVG */
+.mermaid-container {
+  padding: 1rem;
+  background: #fafafa;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.mermaid-container svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+/* Placeholder state */
+.mermaid-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: #f9fafb;
+  border: 2px dashed #d1d5db;
+  border-radius: 8px;
+  color: #6b7280;
+  min-height: 120px;
+}
+
+.mermaid-placeholder-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.mermaid-placeholder-text {
+  font-size: 0.875rem;
+}
+
+/* Loading state */
+.mermaid-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  color: #6b7280;
+  min-height: 120px;
+}
+
+.mermaid-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: mermaid-spin 0.8s linear infinite;
+}
+
+@keyframes mermaid-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Error state */
+.mermaid-error {
+  padding: 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+}
+
+.mermaid-error-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #dc2626;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.mermaid-error-icon {
+  font-size: 1.25rem;
+}
+
+.mermaid-error-message {
+  margin: 0;
+  padding: 0.75rem;
+  background: #fff;
+  border: 1px solid #fecaca;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #991b1b;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.mermaid-error-hint {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+/* ============================================
+   Mermaid Edit Modal
+   ============================================ */
+
+.mermaid-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 10000;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.mermaid-modal-overlay.mermaid-modal-visible {
+  display: flex;
+}
+
+.mermaid-modal {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  width: 100%;
+  max-width: 1200px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Modal Header */
+.mermaid-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.mermaid-modal-header h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.mermaid-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+  border-radius: 4px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.mermaid-modal-close:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+/* Modal Body - Split View */
+.mermaid-modal-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .mermaid-modal-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+}
+
+/* Editor Panel */
+.mermaid-modal-editor {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.mermaid-modal-editor label,
+.mermaid-modal-preview label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.mermaid-modal-editor textarea {
+  flex: 1;
+  width: 100%;
+  min-height: 300px;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  resize: none;
+  background: #f9fafb;
+  color: #111827;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mermaid-modal-editor textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.mermaid-modal-editor textarea::placeholder {
+  color: #9ca3af;
+}
+
+/* Preview Panel */
+.mermaid-modal-preview {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.mermaid-modal-preview-container {
+  flex: 1;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  overflow: auto;
+  min-height: 300px;
+}
+
+.mermaid-modal-preview-container mermaid-viewer {
+  margin: 0;
+}
+
+.mermaid-modal-preview-container .mermaid-container {
+  border: none;
+  border-radius: 0;
+  min-height: 100%;
+}
+
+/* Modal Footer */
+.mermaid-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.mermaid-modal-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mermaid-modal-btn-secondary {
+  background: white;
+  border: 1px solid #d1d5db;
+  color: #374151;
+}
+
+.mermaid-modal-btn-secondary:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.mermaid-modal-btn-primary {
+  background: #3b82f6;
+  border: 1px solid #3b82f6;
+  color: white;
+}
+
+.mermaid-modal-btn-primary:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+/* ============================================
+   Print Styles
+   ============================================ */
+
+@media print {
+  mermaid-viewer {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .mermaid-container {
+    border: 1px solid #ccc;
+    background: white;
+  }
+
+  .tiptap-mermaid-node:hover::after {
+    display: none;
+  }
+
+  .mermaid-modal-overlay {
+    display: none !important;
+  }
+}

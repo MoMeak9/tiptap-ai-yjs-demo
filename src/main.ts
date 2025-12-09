@@ -18,7 +18,19 @@ import { Suggestion } from "./extensions/suggestion";
 import { SuggestionManager } from "./extensions/suggestionManager";
 import { SuggestionUI } from "./extensions/suggestionUI";
 import { ProcessingDecoration } from "./extensions/processingDecoration";
+import { Mermaid } from "./extensions/mermaid";
+import { initMermaidModal } from "./extensions/mermaidModal";
+import "./extensions/mermaidStyles.css";
 import type { User } from "./types";
+
+// Pre-initialize mermaid at app startup to avoid dynamic import issues
+import mermaid from "mermaid";
+mermaid.initialize({
+  startOnLoad: false,
+  theme: "default",
+  securityLevel: "loose",
+  logLevel: "error",
+});
 
 // Random color generator
 const getRandomColor = (): string => {
@@ -89,6 +101,9 @@ provider.awareness.setLocalStateField("user", currentUser);
 // Create comment manager
 const commentManager = new CommentManager(ydoc, provider);
 
+// Initialize Mermaid modal (singleton)
+const mermaidModal = initMermaidModal();
+
 // Create editor
 const editor = new Editor({
   element: document.querySelector("#editor") as HTMLElement,
@@ -136,6 +151,11 @@ const editor = new Editor({
       },
     }),
     ProcessingDecoration,
+    Mermaid.configure({
+      HTMLAttributes: {
+        class: "tiptap-mermaid",
+      },
+    }),
   ],
   content: "",
   onUpdate: ({ editor }) => {
@@ -384,6 +404,9 @@ if (toolbar) {
       case "aiSuggest":
         applyAISuggestionDemo();
         break;
+      case "mermaid":
+        editor.chain().focus().insertMermaid().run();
+        break;
     }
 
     updateToolbarState();
@@ -522,6 +545,7 @@ window.addEventListener("beforeunload", () => {
   suggestionUI.destroy();
   commentManager.destroy();
   commentUI.destroy();
+  mermaidModal.destroy();
   provider.destroy();
   editor.destroy();
 });

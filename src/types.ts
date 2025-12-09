@@ -205,6 +205,32 @@ export interface ISuggestionUI {
   destroy(): void;
 }
 
+// ============================================
+// Mermaid Types (Diagram Extension)
+// ============================================
+
+/**
+ * Mermaid node attributes
+ */
+export interface MermaidAttributes {
+  code: string;
+}
+
+/**
+ * Mermaid extension options
+ */
+export interface MermaidOptions {
+  HTMLAttributes: Record<string, string>;
+  defaultCode: string;
+}
+
+/**
+ * Mermaid extension storage
+ */
+export interface MermaidStorage {
+  // Reserved for future use (e.g., active mermaid tracking)
+}
+
 /**
  * Declare module augmentation for Editor commands
  */
@@ -229,6 +255,11 @@ declare module "@tiptap/core" {
       rejectAllSuggestions: (groupId?: string) => ReturnType;
       clearAllSuggestions: () => ReturnType;
       finalizeSuggestions: () => ReturnType;
+    };
+    mermaid: {
+      insertMermaid: (code?: string) => ReturnType;
+      updateMermaid: (pos: number, code: string) => ReturnType;
+      deleteMermaid: () => ReturnType;
     };
   }
 }
