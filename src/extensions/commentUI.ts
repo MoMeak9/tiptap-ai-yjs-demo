@@ -94,6 +94,7 @@ export class CommentUI implements ICommentUI {
 
   /**
    * Render comment list
+   * Preserves focus on textarea during user input to avoid focus loss
    */
   private _render(): void {
     if (!this.container) return;
@@ -113,14 +114,89 @@ export class CommentUI implements ICommentUI {
       return;
     }
 
-    listContainer.innerHTML = comments
-      .map((comment) => this._renderCommentItem(comment))
-      .join("");
+    // Check if a textarea is currently focused to preserve it
+    const activeElement = document.activeElement;
+    const focusedTextarea = activeElement?.classList.contains("comment-textarea")
+      ? (activeElement as HTMLTextAreaElement)
+      : null;
+    const focusedCommentId = focusedTextarea?.dataset.commentId;
+    const focusedSelectionStart = focusedTextarea?.selectionStart;
+    const focusedSelectionEnd = focusedTextarea?.selectionEnd;
 
-    // Attach events for each comment item
-    comments.forEach((comment) => {
-      this._attachCommentEvents(comment.id);
+    // Build a map of existing comment items to enable incremental updates
+    const existingItems = new Map<string, HTMLElement>();
+    listContainer.querySelectorAll(".comment-item").forEach((item) => {
+      const id = (item as HTMLElement).dataset.commentId;
+      if (id) existingItems.set(id, item as HTMLElement);
     });
+
+    // Track which comments still exist
+    const currentCommentIds = new Set(comments.map((c) => c.id));
+
+    // Remove deleted comments
+    existingItems.forEach((item, id) => {
+      if (!currentCommentIds.has(id)) {
+        item.remove();
+      }
+    });
+
+    // Update or add comments
+    let prevElement: HTMLElement | null = null;
+    comments.forEach((comment) => {
+      const existingItem = existingItems.get(comment.id);
+
+      if (existingItem) {
+        // Skip full re-render if this textarea is focused (user is typing)
+        if (focusedCommentId === comment.id) {
+          // Only update non-textarea parts if needed (e.g., replies count)
+          // For now, skip entirely to preserve focus
+          prevElement = existingItem;
+          return;
+        }
+
+        // Update existing item
+        const newHtml = this._renderCommentItem(comment);
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML = newHtml;
+        const newItem = tempDiv.firstElementChild as HTMLElement;
+
+        if (newItem) {
+          existingItem.replaceWith(newItem);
+          this._attachCommentEvents(comment.id);
+          prevElement = newItem;
+        }
+      } else {
+        // Add new comment item
+        const newHtml = this._renderCommentItem(comment);
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML = newHtml;
+        const newItem = tempDiv.firstElementChild as HTMLElement;
+
+        if (newItem) {
+          if (prevElement) {
+            prevElement.after(newItem);
+          } else {
+            listContainer.prepend(newItem);
+          }
+          this._attachCommentEvents(comment.id);
+          prevElement = newItem;
+        }
+      }
+    });
+
+    // Restore focus and cursor position if textarea was focused
+    if (focusedCommentId && focusedTextarea) {
+      const newTextarea = this.container.querySelector(
+        `.comment-item[data-comment-id="${focusedCommentId}"] .comment-textarea`
+      ) as HTMLTextAreaElement | null;
+
+      if (newTextarea && newTextarea !== focusedTextarea) {
+        newTextarea.focus();
+        if (focusedSelectionStart !== undefined && focusedSelectionEnd !== undefined) {
+          newTextarea.setSelectionRange(focusedSelectionStart, focusedSelectionEnd);
+        }
+      }
+    }
   }
 
   /**

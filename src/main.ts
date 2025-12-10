@@ -26,6 +26,7 @@ import { getJimengAIService, optimizePromptFromSelection } from "./extensions/ji
 import { initJimengModal } from "./extensions/jimengModal";
 import "./extensions/jimengStyles.css";
 import { ExcalidrawExtension, ExcalidrawManager, initExcalidrawModal } from "./extensions/excalidraw";
+import { convertMermaidToExcalidraw } from "./extensions/excalidraw/mermaidConverter";
 import "@excalidraw/excalidraw/index.css";
 import "./extensions/excalidraw/excalidrawStyles.css";
 import type { User } from "./types";
@@ -393,15 +394,36 @@ async function generateMermaidDiagram(): Promise<void> {
       analysis: result.analysis,
     });
 
-    // Insert the generated Mermaid diagram after the selected content
-    // Move cursor to end of selection, then insert diagram
-    const { to } = editor.state.selection;
-    editor
-      .chain()
-      .focus()
-      .setTextSelection(to)
-      .insertMermaid(result.mermaidCode)
-      .run();
+    // Try to convert Mermaid to Excalidraw for better visualization
+    const conversionResult = await convertMermaidToExcalidraw(result.mermaidCode);
+
+    // Get cursor position for insertion
+    const { to: insertPos } = editor.state.selection;
+
+    if (conversionResult.success && conversionResult.elements.length > 0) {
+      // Successfully converted - insert as Excalidraw node
+      console.log("[Mermaid AI] Converted to Excalidraw:", {
+        diagramType: conversionResult.diagramType,
+        elementCount: conversionResult.elements.length,
+      });
+
+      editor
+        .chain()
+        .focus()
+        .setTextSelection(insertPos)
+        .insertExcalidraw(conversionResult.elements, conversionResult.files)
+        .run();
+    } else {
+      // Conversion failed - fallback to Mermaid node
+      console.warn("[Mermaid AI] Excalidraw conversion failed, falling back to Mermaid node:", conversionResult.error);
+
+      editor
+        .chain()
+        .focus()
+        .setTextSelection(insertPos)
+        .insertMermaid(result.mermaidCode)
+        .run();
+    }
 
     // Show warning if there was a validation issue
     if (result.error) {

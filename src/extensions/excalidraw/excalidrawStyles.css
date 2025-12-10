@@ -5,6 +5,7 @@
 /* Node wrapper in editor */
 .tiptap-excalidraw-node {
   position: relative;
+  width: 100%;
   margin: 1rem 0;
   border: 2px solid #e0e0e0;
   border-radius: 8px;
@@ -12,6 +13,7 @@
   background: #ffffff;
   transition: border-color 0.2s, box-shadow 0.2s;
   cursor: pointer;
+  box-sizing: border-box;
 }
 
 .tiptap-excalidraw-node:hover {
@@ -30,6 +32,7 @@
 
 /* Preview content */
 .excalidraw-preview {
+  height: 100%;
   padding: 0.75rem;
 }
 
@@ -75,6 +78,7 @@
 }
 
 .excalidraw-preview-canvas {
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -87,7 +91,6 @@
 /* SVG Preview */
 .excalidraw-svg-preview {
   width: 100%;
-  max-height: 350px;
   overflow: auto;
 }
 

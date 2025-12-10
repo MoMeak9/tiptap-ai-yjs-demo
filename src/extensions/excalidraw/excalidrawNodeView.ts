@@ -8,10 +8,10 @@
  * - Mutation isolation (ignoreMutation)
  * - Edit modal triggering
  */
-import type { Editor } from '@tiptap/core';
-import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
-import type { NodeView } from '@tiptap/pm/view';
-import type { ExcalidrawAttributes, OpenExcalidrawEditorDetail } from './types';
+import type { Editor } from "@tiptap/core";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import type { NodeView } from "@tiptap/pm/view";
+import type { ExcalidrawAttributes, OpenExcalidrawEditorDetail } from "./types";
 
 export interface ExcalidrawNodeViewProps {
   node: ProseMirrorNode;
@@ -25,7 +25,7 @@ export interface ExcalidrawNodeViewProps {
  */
 export class OpenExcalidrawEditorEvent extends CustomEvent<OpenExcalidrawEditorDetail> {
   constructor(detail: OpenExcalidrawEditorDetail) {
-    super('open-excalidraw-editor', {
+    super("open-excalidraw-editor", {
       bubbles: true,
       composed: true,
       detail,
@@ -62,21 +62,21 @@ export class ExcalidrawNodeView implements NodeView {
     this.extension = extension;
 
     // Create the container element
-    this.dom = document.createElement('div');
-    this.dom.className = 'tiptap-excalidraw-node';
-    this.dom.setAttribute('data-type', 'excalidraw');
+    this.dom = document.createElement("div");
+    this.dom.className = "tiptap-excalidraw-node";
+    this.dom.setAttribute("data-type", "excalidraw");
 
     // Create content area for preview
-    this.contentDOM = document.createElement('div');
-    this.contentDOM.className = 'excalidraw-preview-container';
+    this.contentDOM = document.createElement("div");
+    this.contentDOM.className = "excalidraw-preview-container";
     this.dom.appendChild(this.contentDOM);
 
     // Render initial preview
     this.renderPreview();
 
     // Bind event handlers
-    this.dom.addEventListener('dblclick', this.handleDoubleClick);
-    this.dom.addEventListener('click', this.handleClick);
+    this.dom.addEventListener("dblclick", this.handleDoubleClick);
+    this.dom.addEventListener("click", this.handleClick);
   }
 
   /**
@@ -89,7 +89,7 @@ export class ExcalidrawNodeView implements NodeView {
     let elements: unknown[] = [];
 
     try {
-      elements = JSON.parse(attrs.initialElements || '[]');
+      elements = JSON.parse(attrs.initialElements || "[]");
     } catch {
       elements = [];
     }
@@ -103,10 +103,14 @@ export class ExcalidrawNodeView implements NodeView {
         <div class="excalidraw-preview-header">
           <span class="excalidraw-icon">🎨</span>
           <span class="excalidraw-label">Excalidraw Diagram</span>
-          ${hasSourceMermaid ? '<span class="excalidraw-badge">From Mermaid</span>' : ''}
+          ${
+            hasSourceMermaid
+              ? '<span class="excalidraw-badge">From Mermaid</span>'
+              : ""
+          }
         </div>
         <div class="excalidraw-preview-info">
-          <span>${elementCount} element${elementCount !== 1 ? 's' : ''}</span>
+          <span>${elementCount} element${elementCount !== 1 ? "s" : ""}</span>
           <span class="excalidraw-hint">Double-click to edit</span>
         </div>
         <div class="excalidraw-preview-canvas" id="preview-${attrs.nodeId}">
@@ -128,11 +132,12 @@ export class ExcalidrawNodeView implements NodeView {
 
     try {
       // Dynamic import to avoid loading React/Excalidraw until needed
-      const { renderExcalidrawPreview } = await import('./excalidrawPreview');
+      const { renderExcalidrawPreview } = await import("./excalidrawPreview");
       renderExcalidrawPreview(container as HTMLElement, elements, nodeId);
     } catch (error) {
-      console.error('[ExcalidrawNodeView] Failed to load preview:', error);
-      container.innerHTML = '<div class="excalidraw-preview-placeholder">Preview unavailable</div>';
+      console.error("[ExcalidrawNodeView] Failed to load preview:", error);
+      container.innerHTML =
+        '<div class="excalidraw-preview-placeholder">Preview unavailable</div>';
     }
   }
 
@@ -163,8 +168,8 @@ export class ExcalidrawNodeView implements NodeView {
     let files: Record<string, unknown> = {};
 
     try {
-      elements = JSON.parse(attrs.initialElements || '[]');
-      files = JSON.parse(attrs.initialFiles || '{}');
+      elements = JSON.parse(attrs.initialElements || "[]");
+      files = JSON.parse(attrs.initialFiles || "{}");
     } catch {
       elements = [];
       files = {};
@@ -172,8 +177,8 @@ export class ExcalidrawNodeView implements NodeView {
 
     const event = new OpenExcalidrawEditorEvent({
       nodeId: attrs.nodeId,
-      elements: elements as OpenExcalidrawEditorDetail['elements'],
-      files: files as OpenExcalidrawEditorDetail['files'],
+      elements: elements as OpenExcalidrawEditorDetail["elements"],
+      files: files as OpenExcalidrawEditorDetail["files"],
       onSave: (newElements, newFiles) => {
         this.applyChange(newElements, newFiles);
       },
@@ -190,7 +195,7 @@ export class ExcalidrawNodeView implements NodeView {
    */
   private applyChange(elements: unknown[], files: Record<string, unknown>) {
     const pos = this.getPos();
-    if (typeof pos !== 'number') return;
+    if (typeof pos !== "number") return;
 
     // Create transaction to update node attributes
     const { tr } = this.editor.state;
@@ -211,7 +216,7 @@ export class ExcalidrawNodeView implements NodeView {
    */
   update(node: ProseMirrorNode): boolean {
     // Only handle same node type
-    if (node.type.name !== 'excalidraw') {
+    if (node.type.name !== "excalidraw") {
       return false;
     }
 
@@ -247,7 +252,7 @@ export class ExcalidrawNodeView implements NodeView {
    */
   selectNode() {
     this.isSelected = true;
-    this.dom.classList.add('ProseMirror-selectednode');
+    this.dom.classList.add("ProseMirror-selectednode");
   }
 
   /**
@@ -255,7 +260,7 @@ export class ExcalidrawNodeView implements NodeView {
    */
   deselectNode() {
     this.isSelected = false;
-    this.dom.classList.remove('ProseMirror-selectednode');
+    this.dom.classList.remove("ProseMirror-selectednode");
   }
 
   /**
@@ -273,18 +278,22 @@ export class ExcalidrawNodeView implements NodeView {
    * Cleanup when the node view is destroyed
    */
   destroy() {
-    this.dom.removeEventListener('dblclick', this.handleDoubleClick);
-    this.dom.removeEventListener('click', this.handleClick);
+    this.dom.removeEventListener("dblclick", this.handleDoubleClick);
+    this.dom.removeEventListener("click", this.handleClick);
 
     // Cleanup React if rendered
-    const previewContainer = this.contentDOM?.querySelector('.excalidraw-preview-canvas');
+    const previewContainer = this.contentDOM?.querySelector(
+      ".excalidraw-preview-canvas"
+    );
     if (previewContainer) {
       // Let React cleanup happen through its own lifecycle
-      import('./excalidrawPreview').then(({ unmountExcalidrawPreview }) => {
-        unmountExcalidrawPreview(previewContainer as HTMLElement);
-      }).catch(() => {
-        // Ignore cleanup errors
-      });
+      import("./excalidrawPreview")
+        .then(({ unmountExcalidrawPreview }) => {
+          unmountExcalidrawPreview(previewContainer as HTMLElement);
+        })
+        .catch(() => {
+          // Ignore cleanup errors
+        });
     }
   }
 }
